@@ -1,0 +1,7 @@
+<map name=menu>
+<area coords=0,12,151,30 href="/@HTMLSUBDIR@/emotif-maker.html" target=_top>
+<area coords=0,34,151,52 href="/@HTMLSUBDIR@/emotif-scan.html" target=_top>
+<area coords=0,56,151,73 href="/@HTMLSUBDIR@/emotif-search.html" target=_top>
+</map>
+<img src=/@HTMLSUBDIR@/menu.gif usemap=#menu align=right border=0>
+

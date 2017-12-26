@@ -1,0 +1,33 @@
+This file contains any messages produced by compilers while
+running configure, to aid debugging if configure makes a mistake.
+
+configure:570: checking whether make sets ${MAKE}
+configure:599: checking for gcc
+configure:712: checking whether the C compiler (gcc  ) works
+configure:728: gcc -o conftest    conftest.c  1>&5
+configure:754: checking whether the C compiler (gcc  ) is a cross-compiler
+configure:759: checking whether we are using GNU C
+configure:787: checking whether gcc accepts -g
+configure:823: checking for c++
+configure:855: checking whether the C++ compiler (c++  ) works
+configure:871: c++ -o conftest    conftest.C  1>&5
+configure:897: checking whether the C++ compiler (c++  ) is a cross-compiler
+configure:902: checking whether we are using GNU C++
+configure:930: checking whether c++ accepts -g
+configure:992: checking for a BSD compatible install
+configure:1048: checking for perl
+configure:1103: checking for gnuplot
+configure:1148: checking for agrep
+configure:1193: checking for grep
+configure:1238: checking for ppmtogif
+configure:1284: checking for pnmcrop
+configure:1330: checking for pnmfile
+configure:1376: checking for pnminvert
+configure:1422: checking for pnmdepth
+configure:1468: checking for pnmarith
+configure:1514: checking for giftopnm
+configure:1560: checking for pstopnm
+configure:1606: checking for pnmscale
+configure:1652: checking for ppmquant
+configure:1698: checking how to run the C preprocessor
+configure:1778: checking for ANSI C header files

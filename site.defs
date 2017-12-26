@@ -1,0 +1,73 @@
+# This file is a shell script that defines site-dependent directories.
+# It is used by the configure program to install files in the correct
+# places.  You should edit these lines so they contain the directories
+# for your particular site.
+#
+# Note: Do not insert any spaces around the equals (=) signs!
+# Note: Definitions that have multiple files must be surrounded by
+#       double quotation marks.
+
+COPYRIGHT=Copyright\ \(c\)\ 2002
+DATE=March\ 1\,\ 2002
+CONTACT_CRAIG=http://craig.nevill-manning.com
+CONTACT_CRAIG_CGI=//craig.nevill-manning.com
+CONTACT_CRAIG_HTML=//craig.nevill-manning.com
+CONTACT_DOUG=http://cmgm.stanford.edu/~brutlag
+CONTACT_DOUG_CGI=//cmgm.stanford.edu/~brutlag
+CONTACT_DOUG_HTML=//cmgm.stanford.edu/~brutlag
+CONTACT_JIMMY=yhuang@leland.stanford.edu
+CONTACT_JIMMY_CGI=yhuang\\\@leland.stanford.edu
+CONTACT_JIMMY_HTML=mailto:yhuang@leland.stanford.edu
+CONTACT_TOM=twu@gene.COM
+CONTACT_TOM_CGI=twu\\\@gene.COM
+CONTACT_TOM_HTML=mailto:twu@gene.COM
+SOFTWARE=eMOTIF
+VERSION=3.6
+BLOCKS_RELEASE=Version\ 13.0\;\ August\ 12\,\ 2001
+PRINTS_RELEASE=Version\ 31.0\;\ June\ 30\,\ 2001
+
+# The local directory containing the current eMOTIF package
+LOCAL_DIR="/distributions/emotif-3.6"
+
+DATA_SUBDIR_EMOTIFS="emotifs"
+DATA_SUBDIR_SEQUENCES="sequences"
+
+# The top level of your HTML directory
+HTMLDIR="/var/www/html"
+
+# The desired subdirectory within HTMLDIR for eMOTIF
+HTMLSUBDIR="emotif"
+
+# The reference to your your CGI-BIN directory
+CGIDIR="/var/www/cgi-bin"
+
+# The relative reference to your your CGI-BIN directory
+CGIRELDIR="cgi-bin"
+
+# The desired subdirectory within CGIDIR for eMOTIF
+CGISUBDIR="emotif"
+
+# The desired location of your data files for the eMOTIF package
+DATADIR_EMOTIF="/usr/share/emotif"
+
+# Available group files
+AVAIL_GROUPS="./share/default ./share/HSSP+beta"
+
+# The name of the default groups file
+DEFAULT_GROUPS="default"
+
+# The desired block files
+RAW_BLOCKS_INPUT="../einputs/blocks/blocks.dat"
+
+# The raw prints file to process
+RAW_PRINTS_INPUT="../einputs/prints/prints31_0.dat"
+
+# The sequence files to process for emotif-scan
+# Note: These files must be in FASTA format
+SEQUENCE_INPUT="../einputs/seqs/sprot.fas"
+
+# You shouldn't need to edit the following lines.  They make
+# appropriate substitutions on the above definitions.
+# The [^ 	] are really [^ \t].
+SEQUENCES_FOR_PERL=`echo "$SEQUENCE_INPUT" | \
+sed -e 's/[^ 	]*\/\([^ 	]*\)\.fas/\1\.scan/g'`

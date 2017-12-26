@@ -1,0 +1,181 @@
+#! @PERL@
+
+
+#
+# File:  plot.pl
+# Date:  @DATE@
+# Package:  @SOFTWARE@-@VERSION@
+# Programmers:  Craig G. Nevill-Manning (@CONTACT_CRAIG@)
+#               Thomas D. Wu (@CONTACT_TOM@)
+#               Jimmy Y. Huang (@CONTACT_JIMMY@)
+# ------------------------------------------------------------
+#
+# ------------------------------------------------------------
+# @COPYRIGHT@
+# All Rights Reserved.
+# The Leland Stanford Junior University Board of Trustees
+#
+
+
+$prefix = "@prefix@";
+$exec_prefix = "@exec_prefix@";
+$bindir = "@bindir@";
+
+sub Getopts {
+    local($argumentative) = @_;
+    local(@args,$_,$first,$rest);
+    local($errs) = 0;
+
+    @args = split( / */, $argumentative );
+    while(@ARGV && ($_ = $ARGV[0]) =~ /^-(.)(.*)/) {
+	($first,$rest) = ($1,$2);
+	$pos = index($argumentative,$first);
+	if($pos >= 0) {
+	    if($pos < $#args && $args[$pos+1] eq ':') {
+		shift(@ARGV);
+		if($rest eq '') {
+		    ++$errs unless @ARGV;
+		    $rest = shift(@ARGV);
+		}
+		${"opt_$first"} = $rest;
+	    }
+	    else {
+		${"opt_$first"} = 1;
+		if($rest eq '') {
+		    shift(@ARGV);
+		}
+		else {
+		    $ARGV[0] = "-$rest";
+		}
+	    }
+	}
+	else {
+	    print STDERR "Unknown option: $first\n";
+	    ++$errs;
+	    if($rest ne '') {
+		$ARGV[0] = "-$rest";
+	    }
+	    else {
+		shift(@ARGV);
+	    }
+	}
+    }
+    $errs == 0;
+}
+
+$opt_m = "";
+Getopts("f:lm:cLP");
+
+open(S, ">/tmp/$$");
+open(E, ">/tmp/$$.errors");
+
+open(IN, $opt_f);
+
+$big = 10000000000000000000000000;
+
+$minx = $big; $maxx = -$big;
+$miny = $big; $maxy = -$big;
+
+$motifs = 0;
+
+while (<IN>) {
+    chop;
+    ($k, $motif, $p, $localp) = split(/\t/, $_);
+    $p = $localp if ($opt_L);
+
+    $motifs ++;
+
+    if ($motif =~ /-1/) { print E $k + 0.2, "\t$p\n"; }
+    else { print S "$k\t$p\n"; }
+
+    $minx = $k if ($k < $minx);
+    $maxx = $k if ($k > $maxx);
+    $miny = $p if ($p < $miny);
+    $maxy = $p if ($p > $maxy);
+    
+    if (!defined($min[$k]) || $p < $min[$k]) { 
+	$min[$k] = $p;
+	$minmotif[$k] = $motif;
+    }
+}
+
+close(S);
+close(E);
+
+$minx = 0 if ($minx == $big);
+$miny = 0 if ($miny == $big);
+
+open(MIN, ">/tmp/$$.min");
+open(PO , ">$opt_f.pareto-optimal");
+
+$min = $big;
+
+for ($i = $#min; $i > 0; $i --) {
+    # sometimes there are no motifs matching i sequences
+    if (defined($min[$i])) {	
+	if ($min[$i] < $min) {
+	    print PO "$i\t$minmotif[$i]\t$min[$i]\t", -$i * $min[$i], "\n";
+	    $min = $min[$i];
+	}
+	print MIN "$i\t$min\n";
+    }
+}
+close(MIN);
+close(PO);
+
+open(PLOT, "| @GNUPLOT@");
+
+$labels = "";
+
+$line = "";
+
+if (!$opt_L) { 
+    $line = ", -7.3 with lines"; # Change this number with each release of Sprot.  It's -log base 10 of the size of Sprot.
+}
+
+if ($opt_P) {
+    $terminal = "postscript";
+    $output = "ps";
+    print PLOT qq[
+		  set title "$opt_f"
+		  set xlabel "True positives"
+		  set ylabel "Expected false positives"
+		  ];
+} else {
+    $terminal = "pbm color";
+    $output = "pbm";
+    print PLOT "set noxtics
+    set noytics
+    set noborder
+";
+}
+
+print PLOT qq[
+	      set terminal $terminal
+	      set output "$opt_f.$output"
+	      set xrange [$minx:$maxx]
+	      set yrange [$miny:$maxy]
+	      set nokey
+
+	      $labels
+	      plot "/tmp/$$" with dots, "/tmp/$$.errors" with dots, "/tmp/$$.min" with lines $line;
+	      ];
+
+close(PLOT);
+
+if ($opt_P) {
+}
+else {
+    `echo scale: $minx..$maxx, $miny..$maxy $motifs > $opt_f.info`;
+    `@PNMCROP@ < $opt_f.pbm 2>&- | $bindir/myppmchange > $opt_f.pbm2`;
+    ($imagex, $imagey) = `@PNMFILE@ $opt_f.pbm2` =~ /(\d+) by (\d+)/;
+    
+    if ($opt_c) {
+	`$bindir/gradient $imagex $imagey $minx $maxx $miny $maxy | @PNMINVERT@ | @PNMDEPTH@ 16 > $opt_f.gradient
+@PNMARITH@ -multiply $opt_f.pbm2 $opt_f.gradient 2>&- > $opt_f.pbm3
+mv $opt_f.pbm3 $opt_f.pbm2`;
+    }
+    
+    `@PPMTOGIF@ -interlace <$opt_f.pbm2 2>&- > $opt_f.gif`;
+}
+

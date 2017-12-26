@@ -1,0 +1,42 @@
+# This file is a shell script that caches the results of configure
+# tests run on this system so they can be shared between configure
+# scripts and configure runs.  It is not useful on other systems.
+# If it contains results you don't want to keep, you may remove or edit it.
+#
+# By default, configure uses ./config.cache as the cache file,
+# creating it if it does not exist already.  You can give configure
+# the --cache-file=FILE option to use a different cache file; that is
+# what configure does when it calls configure scripts in
+# subdirectories, so they share the cache.
+# Giving --cache-file=/dev/null disables caching, for debugging configure.
+# config.status only pays attention to the cache file if you give it the
+# --recheck option to rerun configure.
+#
+ac_cv_header_stdc=${ac_cv_header_stdc=yes}
+ac_cv_path_AGREP=${ac_cv_path_AGREP=/usr/bin/agrep}
+ac_cv_path_GIFTOPNM=${ac_cv_path_GIFTOPNM=/usr/bin/giftopnm}
+ac_cv_path_GNUPLOT=${ac_cv_path_GNUPLOT=/usr/local/bin/gnuplot}
+ac_cv_path_GREP=${ac_cv_path_GREP=/bin/grep}
+ac_cv_path_PERL=${ac_cv_path_PERL=/usr/bin/perl}
+ac_cv_path_PNMARITH=${ac_cv_path_PNMARITH=/usr/bin/pnmarith}
+ac_cv_path_PNMCROP=${ac_cv_path_PNMCROP=/usr/bin/pnmcrop}
+ac_cv_path_PNMDEPTH=${ac_cv_path_PNMDEPTH=/usr/bin/pnmdepth}
+ac_cv_path_PNMFILE=${ac_cv_path_PNMFILE=/usr/bin/pnmfile}
+ac_cv_path_PNMINVERT=${ac_cv_path_PNMINVERT=/usr/bin/pnminvert}
+ac_cv_path_PNMSCALE=${ac_cv_path_PNMSCALE=/usr/bin/pnmscale}
+ac_cv_path_PPMQUANT=${ac_cv_path_PPMQUANT=/usr/bin/ppmquant}
+ac_cv_path_PPMTOGIF=${ac_cv_path_PPMTOGIF=/usr/bin/ppmtogif}
+ac_cv_path_PSTOPNM=${ac_cv_path_PSTOPNM=/usr/bin/pstopnm}
+ac_cv_path_install=${ac_cv_path_install='/usr/bin/install -c'}
+ac_cv_prog_CC=${ac_cv_prog_CC=gcc}
+ac_cv_prog_CPP=${ac_cv_prog_CPP='gcc -E'}
+ac_cv_prog_CXX=${ac_cv_prog_CXX=c++}
+ac_cv_prog_cc_cross=${ac_cv_prog_cc_cross=no}
+ac_cv_prog_cc_g=${ac_cv_prog_cc_g=yes}
+ac_cv_prog_cc_works=${ac_cv_prog_cc_works=yes}
+ac_cv_prog_cxx_cross=${ac_cv_prog_cxx_cross=no}
+ac_cv_prog_cxx_g=${ac_cv_prog_cxx_g=yes}
+ac_cv_prog_cxx_works=${ac_cv_prog_cxx_works=yes}
+ac_cv_prog_gcc=${ac_cv_prog_gcc=yes}
+ac_cv_prog_gxx=${ac_cv_prog_gxx=yes}
+ac_cv_prog_make_make_set=${ac_cv_prog_make_make_set=yes}

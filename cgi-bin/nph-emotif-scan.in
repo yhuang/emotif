@@ -1,0 +1,275 @@
+#! @PERL@
+
+
+#
+# File:  nph-emotif-scan
+# Date:  @DATE@
+# Package:  @SOFTWARE@-@VERSION@
+# Programmers:  Jimmy Y. Huang (@CONTACT_JIMMY@)
+#               Thomas D. Wu (@CONTACT_TOM@)
+#               Craig G. Nevill-Manning (@CONTACT_CRAIG@)
+# ------------------------------------------------------------
+#
+# ------------------------------------------------------------
+# @COPYRIGHT@
+# All Rights Reserved.
+# The Leland Stanford Junior University Board of Trustees
+#
+
+
+require "./cgi-lib.pl";
+$| = 1;
+&ReadParse();
+
+$prefix = "@prefix@";
+$exec_prefix = "@exec_prefix@";
+$bindir = "@bindir@";
+$htmldir = "@HTMLDIR@";
+$htmlsubdir = "@HTMLSUBDIR@";
+$cgireldir = "@CGIRELDIR@";
+$cgisubdir = "@CGISUBDIR@";
+$datadir = "@DATADIR_EMOTIF@";
+$data_subdir_emotifs = "@DATA_SUBDIR_EMOTIFS@";
+$data_subdir_sequences = "@DATA_SUBDIR_SEQUENCES@";
+@dbroots = split '\s+',"@SEQUENCES_FOR_PERL@";
+
+$m = $in{'motif'};	
+
+$approximate = "";
+
+if (defined($in{'mismatches'})) {
+    $s[$in{'mismatches'}] = "selected";
+    $approximate = " -$in{'mismatches'} ";
+
+    if ($in{'mismatches'} eq '0') {
+        $approximate = "";
+    }
+}
+
+$menu = `cat $htmldir/$htmlsubdir/menu`;
+$l = length($m);
+
+print <<END;
+HTTP/1.0 200 OK
+Server: CERN/3.0
+Content-type: text/html
+
+<html><head>
+<title>eMOTIF-SCAN (Sequence Database Search)</title>
+</head>
+<body bgcolor=#FFFFFF vlink=#8777bab alink=#8777bab link=#26246b>
+
+$menu
+
+<img src="/$htmlsubdir/emotif-scan.gif" border=0>
+
+<p>
+<a href="@CONTACT_JIMMY_CGI@">Jimmy Y. Huang</a>, 
+<a href="@CONTACT_TOM_CGI@">Thomas D. Wu</a>, 
+<a href="@CONTACT_CRAIG_CGI@">Craig G. Nevill-Manning</a>, and 
+<a href="@CONTACT_DOUG_CGI@">Douglas L. Brutlag</a>
+
+<p>
+<form method=get action=/$cgireldir/$cgisubdir/nph-emotif-scan>
+
+<p>
+Scanning for this <i>e</i>M<font size=-1>OTIF</font> regular expression:<br>
+<input type=text name=motif size=$l value=$m>
+
+Allow 
+<select name=mismatches>
+<option>0
+<option $s[1]>1
+<option $s[2]>2
+<option $s[3]>3
+<option $s[4]>4
+</select>
+mismatches
+
+<p>
+<input type=image src="/$htmlsubdir/retrieve-sequences.gif" border=0>
+
+<a href="/$cgireldir/$cgisubdir/nph-make-page?form=emotif-scan.html&tag=text&example=scan-example.txt"><img src="/$htmlsubdir/example-emotif.gif" border=0></a>
+
+<a href="/$htmlsubdir/emotif-scan.html"><img src="/$htmlsubdir/clear-emotif.gif" border=0></a>
+
+</form>
+
+<p>
+Approximate matching uses
+<i><a href="http://glimpse.cs.arizona.edu/udi.html">agrep</a></i>.
+<p>
+<HR>
+<p>
+END
+
+    foreach $dbroot (@dbroots) {
+
+	if ($dbroot eq "sprot.scan") {
+	    $dbname = "Swiss-Prot database";
+	} elsif ($dbroot eq "genpept.scan") {
+	    $dbname = "GenPept database";
+	} else {
+	    $dbname = $dbroot;
+	}
+
+	$db = "$datadir/$data_subdir_sequences/$dbroot";
+	print "<b>In the $dbname:</b><br>\n";
+#	if ($db =~ /swissprot/) { print "In SWISS-PROT:<br>\n"; }
+#	else { print "In GenPept: (scroll right to see protein names)<br>\n"; }
+	
+	open(S, "<$db");
+
+	if ($approximate ne "") {
+	    $mapprox = one_error($m);
+	    if ($m =~ /\{/) {
+		print "You can't use { and } while allowing mismatches: enforcing exact match<br></body></html>\n";
+		$approximate = "";
+	    } elsif ($motif_width > 29) {
+		$m = $mapprox;
+		$approximate = "";
+		print "<br>Warning:  Approximate matching using patterns with more than 29 positions will take a long time!<br>";
+	    } else {
+		close(S);
+		open(S, "/usr/bin/agrep $approximate -i '$m' < $db |");
+	    }
+	} else {
+	    close(S);
+
+            if ($m =~ m|\{|) {
+		open (S, "/bin/grep -E -i '$m' < $db |");
+            } else {
+	        open (S, "$bindir/motifgrep '$m' < $db |");
+            }
+	}
+	
+	print "<pre>";
+	
+	$lines = "";
+	
+	$matches = 0;
+	$match = "";
+	
+	while (<S>) {
+	    $x = "";
+	    if ($_ =~ /$m/i) {
+		($l, $x, $r, $annotation) = $_ =~ /^(.*)($m)(.*)\t(.+)$/i;
+		$sequence = $l.$x.$r;
+		$ll = length($l) + 1;
+		$rr = length($l.$x);
+
+		if (length($l) > 15) { 
+		    $l = substr($l, -15); 
+		}
+		
+		if (length($r) > 15) { 
+		    $r = substr($r, 0, 15); 
+		}
+
+		$l = (' ' x (15 - length($l))) . $l;
+		$r = $r . (' ' x (15 - length($r)));
+	    } elsif ($approximate ne "") {
+		($l, $annotation) = $_ =~ /(.+)\t(.+)/i;
+		$sequence = $l;
+		$l = " ".$l;
+	    } else {
+		next;
+	    }
+
+	    if ($dbroot =~ /sprot/ || $dbroot =~ /swissprot/) {
+		($id, $accession, $description) = $annotation =~
+			m|^(\S+)\s+\((\w{6})\)\s+(.+)|o;
+	    } else {
+	    }
+
+	    $match .= "$x\n";
+
+	    if ($x eq "") {
+	    } elsif ($x =~ /$m/i) {
+		$matches++;
+
+		print "$matches\.  <a href=\"http://expasy.cbr.nrc.ca/cgi-bin/get-sprot-entry?$id\">$id</a>\t";
+		print "$description\n";
+		print " " x 11;
+		print "$l <b>$x</b> $r ($ll--$rr) <a href=\"/$cgireldir/$cgisubdir/nph-emotif-search?exp=-2&sequence=$sequence\"><img border=0 src=\"/$cgisubdir/scan.gif\"></a>\n\n";
+	    } else {
+		print "$id $description\n";
+		print " " x 11;
+		print "Approximate: $l\n\n";
+		$matches ++;
+	    }
+	}
+	
+	print "</pre>\n";
+#	" $matches matching sequences out of ";
+#	print "59,022" if ($db =~ /swissprot/);
+#	print "228,865" if ($db =~ /genpept/);
+#	print " proteins in the database\n";
+
+	if ($match ne "") {
+	    $match =~ s|\n|<br>|g;
+
+	    print "<form method=\"post\" action=\"/$cgireldir/$cgisubdir/nph-make-page\">\n";
+	    print "<input type=\"hidden\" name=\"form\" value=\"emotif-maker.html\">\n";
+	    print "<input type=\"hidden\" name=\"tag\" value=\"TEXTAREA\">\n";
+	    print "<input type=\"hidden\" name=\"sequences\" value=\"$match\">\n";
+	    print "<input type=\"image\" src=\"/$htmlsubdir/make-emotifs.gif\" border=0>\n";
+	    print "</form>";
+	    print "<p>\n";
+	    print "<hr>\n";
+	    print "<p>\n";
+	}
+    }
+
+    print "</body></html>\n";
+
+exit(0);
+
+
+sub one_error {
+    local($p) = @_;
+
+    local($p2, $p3, $p4, $x, $g, %short, %long, $new, $s);
+
+    $p =~ tr/a-z/A-Z/;
+
+    $p2 = $p;
+
+    $x = 0;
+
+    foreach $g ($p =~ /(\[[A-Z]+\])/g) {
+	if (!defined($short{$g})) {
+	    $short{$g} = chr(ord('a') + $x);
+	    $long{chr(ord('a') + $x)} = $g;
+	    $new = $short{$g};
+	    $g =~ s/\[/\\\[/;
+	    $g =~ s/\]/\\\]/;
+	    $p2 =~ s/$g/$new/g;
+	    $x ++;
+#	print "$p2\n";
+	}
+    }
+    
+    $p3 = "";
+
+    $motif_width = length($p2);
+    
+    foreach $i (0..length($p2) - 1) {
+	next if (substr($p2, $i, 1) eq '.');
+	
+	$p4 = $p2;
+	substr($p4, $i, 1) = '.';
+	$p3 .= "$p4|";
+    }
+    
+    chop $p3;
+    
+#print "$p3\n";
+    
+    foreach $s (keys(%long)) {
+	$p3 =~ s/$s/$long{$s}/g;
+    }
+    
+    return $p3;
+}
+

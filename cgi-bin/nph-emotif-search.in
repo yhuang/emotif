@@ -1,0 +1,235 @@
+#! @PERL@
+
+
+#
+# File:  nph-emotif-search
+# Date:  @DATE@
+# Package:  @SOFTWARE@-@VERSION@
+# Programmers:  Jimmy Y. Huang (@CONTACT_JIMMY@)
+#               Thomas D. Wu (@CONTACT_TOM@)
+#               Craig G. Nevill-Manning (@CONTACT_CRAIG@)
+# ------------------------------------------------------------
+#
+# ------------------------------------------------------------
+# @COPYRIGHT@
+# All Rights Reserved.
+# The Leland Stanford Junior University Board of Trustees
+#
+
+
+require "./cgi-lib.pl";
+
+
+$| = 1;
+&ReadParse();
+
+$prefix = "@prefix@";
+$exec_prefix = "@exec_prefix@";
+$bindir = "@bindir@";
+$htmldir = "@HTMLDIR@";
+$htmlsubdir = "@HTMLSUBDIR@";
+$cgireldir = "@CGIRELDIR@";
+$cgisubdir = "@CGISUBDIR@";
+$datadir = "@DATADIR_EMOTIF@";
+
+$menu = `cat $htmldir/$htmlsubdir/menu`;
+
+print <<end;
+HTTP/1.0 200 ok
+server: cern/3.0
+content-type: text/html
+
+<html>
+
+<head>
+<title>eMOTIF-SEARCH (Protein Function Identification)</title>
+</head>
+
+<body bgcolor=#FFFFFF vlink=#8777bab alink=#8777bab link=#26246b>
+$menu
+<img src="/$htmlsubdir/emotif-search.gif" border=0><p>
+
+<p>
+<a href="@CONTACT_JIMMY_CGI@">Jimmy Y. Huang</a>, 
+<a href="@CONTACT_TOM_CGI@">Thomas D. Wu</a>, 
+<a href="@CONTACT_CRAIG_CGI@">Craig G. Nevill-Manning</a>, and 
+<a href="@CONTACT_DOUG_CGI@">Douglas L. Brutlag</a>
+
+<p>
+end
+
+&Main;
+
+print <<end;
+</body>
+</html>
+end
+
+exit (0);
+
+
+sub Main {
+    #-----------------#
+    # Local Variables #
+    #-----------------#
+    my $maxLogExpectation = 0, my $maxExpectation = 0.0;
+    my $sequence = "", my $line = "";
+    my $rank = 0;
+    my %blockIDLookup = ();
+    local (*SEQUENCE), local (*SEARCH_RESULTS);
+
+    $maxLogExpectation = $in{"exp"};
+
+    if (!defined ($maxLogExpectation)) {
+	$maxLogExpectation = -2;
+    }
+
+    $maxExpectation = 10 ** $maxLogExpectation;
+
+    $sequence = $in{"sequence"};
+    $sequence =~ s|[^a-zA-Z]||g;
+    `echo $sequence > /tmp/$$.sequence`;
+
+    if ($in{"database"} eq "all") {
+        open (SEARCH_RESULTS, "$bindir/emotif-search -b -m blocksplus -e $maxLogExpectation -s /tmp/$$.sequence |");
+    } else {
+        open (SEARCH_RESULTS, "$bindir/emotif-search -b -m non-biased-blocksplus -e $maxLogExpectation -s /tmp/$$.sequence |");
+    }
+    
+    print "<br>\n";
+    print "At an expectation of $maxExpectation or less:\n";
+    print "<br>\n" x 2;
+
+    print "<table cols=\"4\" cellspacing=\"0\" cellpadding=\"0\" border=\"0\">\n";
+
+    print "\t<thead>\n";
+    print "\t<tr align=\"left\">\n";
+
+    print "\t\t<th width=\"50\" valign=\"bottom\" align=\"left\">Rank\n";
+    print "\t\t<th width=\"100\" valign=\"bottom\" align=\"left\">Expectation\n";
+    print "\t\t<th width=\"90\" valign=\"bottom\" align=\"left\">Probability Of No Random Hit So Far\n";
+    print "\t\t<th width=\"1000\" valign=\"bottom\" align=\"left\">Description\n";
+
+    print "\t</tr>\n";
+    print "\t</thead>\n";
+
+    print "\t<tbody>\n";
+
+    while ($line = <SEARCH_RESULTS>) {
+	chomp ($line);
+
+	&PrintHit (++$rank, $line, \%blockIDLookup);
+    }
+
+    print "\t</tbody>\n";
+    print "</table>\n";
+
+    print "<br>";
+    print "End of analysis\n";
+
+    `/bin/rm -f /tmp/$$.sequence`;
+
+    print "<HR>";
+    print "The <I>e</I><font size=\"-1\">MOTIFS</font> are derived from the multiple sequence alignments in the <a href=\"http://www.blocks.fhcrc.org/\"><font size=\"-1\">BLOCKS+</font></a> database (@BLOCKS_RELEASE@) and the <a href=\"http://www.bioinf.man.ac.uk/dbbrowser/PRINTS/\"><font size=\"-1\">PRINTS</font></a> database (@PRINTS_RELEASE@).";
+}
+
+
+# ----------
+# Subroutine:  PrintHit
+# ==========
+#
+# ----------
+
+sub PrintHit {
+    #------------#
+    # Parameters #
+    #------------#
+    my ($_rank) = $_[0];
+    my ($_line) = $_[1];
+    my ($_ref_BlockIDLookup) = $_[2];
+
+    #-----------------#
+    # Local Variables #
+    #-----------------#
+    my $url = "", my $printsID = "", my $database = "";
+    my $specificity = 0.0, my $probabilityOfNoRandomHit = 0.0;
+    my $sensitivity = "";
+    my $blockID = "", my $blockDescription = "", my $motif = "";
+    my $expectation = 0.0;
+    my $blockIDHasBeenUsed = 0;
+
+    $database = $in{"database"};
+
+    ($expectation, $probabilityOfNoRandomHit, $specificity, $sensitivity,
+     $blockID, $blockDescription, $motif,
+     $matchedRegion, $start, $end) = split (/\|/, $_line);
+
+    if (defined ($$_ref_BlockIDLookup{$blockID})) {
+	$blockIDHasBeenUsed = 1;
+    } else {
+	$$_ref_BlockIDLookup{$blockID} = "";
+    }
+
+    if ($blockID =~ m|^PR\d+|o) {
+	($printsID) = ($blockID =~ m|(PR\d+)[A-Z]*|o);
+
+	$url = "http://www.bioinf.man.ac.uk/cgi-bin/dbbrowser/PRINTS/DoPRINTS.pl?cmd_a=Display&qua_a=/Full&fun_a=Text&qst_a=$printsID";
+    } elsif ($blockID =~ m|^IPB\d+|o or $blockID =~ m|^PF\d+|o or
+             $blockID =~ m|^BP\d+|o or $blockID =~ m|^DM\d+|o) {
+	$url = "http://www.blocks.fhcrc.org/blocks-bin/getblock.sh?$blockID";
+    } else {
+	$url = "http://eblocks.stanford.edu/cgi-bin/acsearch.pl?AC=$blockID&";
+    }
+
+    if ($_rank % 2) {
+	print "\t<tr bgcolor=\"lavender\">\n";
+    } else {
+	print "\t<tr>\n";
+    }
+
+    print "\t\t<td align=\"left\" valign=\"top\" nowrap width=\"50\">\n";
+    print "\t\t\t<font face=\"courier\">";
+    print "$_rank.";
+    print "</font>\n";
+    print "\t\t</td>\n";
+
+    print "\t\t<td align=\"left\" valign=\"top\" nowrap width=\"100\">\n";
+    print "\t\t\t<font face=\"courier\">";
+    printf ("%1.2e", $expectation);
+    print "</font>\n";
+    print "\t\t</td>\n";
+
+    if ($probabilityOfNoRandomHit == 1) {
+	$probabilityOfNoRandomHit = ">99.9";
+    } else {
+	$probabilityOfNoRandomHit *= 100;
+    }
+
+    print "\t\t<td align=\"left\" valign=\"top\" nowrap width=\"90\">\n";
+    print "\t\t\t<font face=\"courier\">";
+    print "$probabilityOfNoRandomHit%";
+    print "</font>\n";
+    print "\t\t</td>\n";
+
+    print "\t\t<td align=\"left\" valign=\"top\" nowrap width=\"1000\">\n";
+    print "\t\t\t<font face=\"courier\">\n";
+
+    if (!$blockIDHasBeenUsed) {
+        print "\t\t\t<a href=\"$url\"><b>$blockID</b></a> $blockDescription<br>\n";
+    } else {
+        print "\t\t\t<a href=\"$url\">$blockID</a> $blockDescription<br>\n";
+    }
+
+    print "\t\t\t$motif <a target=\"_blank\" href=\"/$cgireldir/$cgisubdir/nph-emotif-scan?motif=$motif\"><img border=0 src=\"/$cgisubdir/scan.gif\"></a><br>\n";
+    print "\t\t\t$start\-$matchedRegion\-$end<br><br>\n";
+    print "\t\t\t</font>\n";
+    print "\t\t</td>\n";
+
+    print "\t</tr>\n";
+
+    print "\t</tbody>\n";
+    print "</table>\n";
+    print "<table cols=\"4\" cellspacing=\"0\" cellpadding=\"0\" border=\"0\">\n";
+    print "\t<tbody>\n";
+}
+

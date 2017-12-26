@@ -1,0 +1,508 @@
+#! @PERL@
+
+
+#
+# File:  emotif-build.pl
+# Date:  @DATE@
+# Package:  @SOFTWARE@-@VERSION@
+# Programmers:  Jimmy Y. Huang (@CONTACT_JIMMY@)
+#               Thomas Wu (@CONTACT_TOM@)
+#               Craig Nevill-Manning (@CONTACT_CRAIG@)
+# ------------------------------------------------------------
+# This script is used by the emotif-@VERSION@/Makefile to generate the
+# emotif-@VERSION@/emotifs/emotifs.tmp files at various specificities.
+# 
+# Usage:  cat <FILES> | emotif-@VERSION@/build/eliminate-shoddy-sequences.pl
+#            > einputs/blocks/blocks_clean.dat
+#
+#         cat einputs/blocks/blocks_clean.dat |
+#            emotif-@VERSION@/build/emotif-build.pl -s <stringency> 
+#            -a emotif-@VERSION@/share/<alphabet file>
+#            > emotif-@VERSION@/emotifs/emotifs.tmp
+#         cat einputs/blocks/blocks_clean.dat |
+#            emotif-@VERSION@/build/emotif-build.pl -s <stringency + 1>
+#            -a emotif-@VERSION@/share/<alphabet file>
+#            >> emotif-@VERSION@/emotifs/emotifs.tmp
+#              .
+#              .
+#              .
+#
+#         sort -n emotif-/emotifs/emotifs.tmp | uniq
+#            > emotif-@VERSION@/emotifs/emotifs.txt
+#         rm -rf emotif-@VERSION@/emotifs/emotifs.tmp
+#
+# Before the June-15-1999 release of BLOCKS+, local sequence alignment blocks
+# curated by other groups were kept in different files.  The alignments
+# from PRINTS were in the file einputs/blocks/prints.dat; the alignments from
+# Pfam were in the file einputs/blocks/pfam.dat; the alignments from ProDom
+# were in the file einputs/blocks/prodom.dat; and the alignments from Domo
+# were in the file einputs/blocks/domo.dat.  Starting with the June-15-1999
+# release of BLOCKS+, everything is stored in one huge file.  This file can
+# be accessed via the web:
+#
+# ftp://ncbi.nlm.nih.gov/repository/blocks/unix/blocksplus-15Jun99/blocks.dat.Z
+#
+# Once obtained and expanded, the blocks.dat file should be in the directory
+# einputs/blocks/.
+#
+# cat <FILES> | emotif-@VERSION@/build/eliminate-shoddy-sequences.pl
+#             > einputs/blocks/blocks_clean.dat
+#
+# The UNIX command cat will concatenate all those files and pipe them to the
+# standard ouptput for the script
+# emotif-@VERSION@/build/eliminate-shoddy-sequences.pl to parse.  This
+# script will generate the file einputs/blocks/blocks_clean.dat.
+#
+# cat einputs/blocks/blocks_clean.dat |
+#            emotif-@VERSION@/build/emotif-build.pl -s <stringency> 
+#            > emotif-@VERSION@/emotifs/emotifs.tmp
+#
+# The UNIX command cat will then feed the file einputs/blocks/blocks_clean.dat
+# to the script emotif-@VERSION@/build/emotif-build.pl through the standard
+# output at various stringency levels.  The results from each stringency
+# level is appended to the results from the previous stringency level.   The
+# final cumulative file emotif-@VERSION@/emotifs/emotifs.tmp is sorted in
+# arithmetic order and uniq-ed to remove duplicate adjacent lines in the sorted
+# emotif-@VERSION@/emotifs/emotifs.tmp file.  The sorted and uniq-ed file is
+# given the name emotif-@VERSION@/emotifs/emotifs.txt.
+# ------------------------------------------------------------
+# @COPYRIGHT@ 
+# All Rights Reserved.
+# The Leland Stanford Junior University Board of Trustees
+#
+
+
+# ----------
+# Requiring the script getopts.pl is the same as using Getopt::Std module.
+# ----------
+sub Getopts {
+    local($argumentative) = @_;
+    local(@args,$_,$first,$rest);
+    local($errs) = 0;
+
+    @args = split( / */, $argumentative );
+    while(@ARGV && ($_ = $ARGV[0]) =~ /^-(.)(.*)/) {
+	($first,$rest) = ($1,$2);
+	$pos = index($argumentative,$first);
+	if($pos >= 0) {
+	    if($pos < $#args && $args[$pos+1] eq ':') {
+		shift(@ARGV);
+		if($rest eq '') {
+		    ++$errs unless @ARGV;
+		    $rest = shift(@ARGV);
+		}
+		${"opt_$first"} = $rest;
+	    }
+	    else {
+		${"opt_$first"} = 1;
+		if($rest eq '') {
+		    shift(@ARGV);
+		}
+		else {
+		    $ARGV[0] = "-$rest";
+		}
+	    }
+	}
+	else {
+	    print STDERR "Unknown option: $first\n";
+	    ++$errs;
+	    if($rest ne '') {
+		$ARGV[0] = "-$rest";
+	    }
+	    else {
+		shift(@ARGV);
+	    }
+	}
+    }
+    $errs == 0;
+}
+
+
+# ----------
+# The special variable $| forces an fflush after every write or print on the
+# output channel currently selected.  Setting this special variable $| to a
+# non-zero value, however, has nothing to do with disabling buffering.
+# ----------
+$| = 1;
+
+
+# ----------
+# Default Parameters
+# ----------
+$opt_s = 0;
+$opt_a = "";
+
+
+# ----------
+# In the case that the user has not specified a value, the default value of,
+# 10 as set earlier, will be used.  The user, however, must supply the name
+# of the alphabet file to be used.
+# ----------
+Getopts ("s:a:");
+
+
+# ----------
+# The values assigned to the variables $opt_s and $opt_a, either user-defined
+# or default, are used to initialize the variables $stringency and
+# $groups_file, respectively.
+# ----------
+$stringency = $opt_s;
+$groups_file = $opt_a;
+
+
+&Main;
+
+exit;
+
+
+sub Main {
+    #-----------------#
+    # Local Variables #
+    #-----------------#
+    my $accession = "", my $description = "", my $block = "";
+    my $numSequencesInBlock = 0, my $coveredSequences = 0;
+    my $numIncorporated = 0;
+    my $record = "", my $name = "", my $sequence = "";
+    my @blockArray = ();
+    local (*TEMP_BLOCK);
+
+    
+    # ----------
+    # The special variable $/ specifies the input record separator.  The
+    # default value for this special variable is the newline character "\n".
+    # The special variable $/ is set to "//\n", since each local sequence
+    # alignment record in the file blocks.dat is separated by the "//\n"
+    # characters.
+    # ----------
+    $/ = "//\n";
+
+
+    # ----------
+    # Using the NULL filehandle within the angle operator is special; this
+    # usage emulates the command-line behavior of typical UNIX filter
+    # programs such as sed and awk.  The <> expression magically yields all
+    # the lines from all the files mentioned on the command line.  If no
+    # files were mentioned, it gets lines from standard input instead.  The
+    # first time <> is evaluated, the @ARGV array is checked, and if it is
+    # NULL, $ARGV[0] is set to "-", which gives the user standard input when
+    # opened.  Note that $ARGV[0] is C's argv[1], and C's argv[0] is Perl's
+    # $0.  With the special variable $/ changed from its default value of
+    # "\n" to "//\n", each iteration of the while loop will put all the
+    # newline-terminated lines for one particular local sequence alignment
+    # into the special varialbe $_.
+    #
+    #      ID   p99.1.146; BLOCK
+    #      AC   BP00146A; distance from previous block=(1,823)
+    #      DE   PROTEIN POLYMERASE RNA DNA-DIR
+    #      BL   KLL;  width=6; seqs=49; 99.5%=449; strength=902 
+    #      DPSD_CLOPA (  41) KKKLFS  61
+    #
+    #      KSGA_MYCCA (  29) KDQLII  36
+    #
+    #      NU2M_APIME ( 252) KWNLIF  74
+    #
+    #                  .
+    #                  .
+    #                  .
+    #
+    #      EPIB_STAEP ( 296) KNYLQI  47
+    #       SYD_BUCAP ( 153) KNFLDI  31
+    #      //\n
+    # ----------
+    while (<>) {
+	
+
+	# ----------
+	# The variables $accession and $description hold the information
+        # that will be used to identify each eMOTIF made by the program
+	# emotif-@VERSION@/src/emotif-maker.  The variable $block contains
+        # all the sequences in a block.
+	# ----------
+	($accession, $description, $block) = ($_ =~ m|ID\s{3}.+;\sBLOCK[^\n]*\nAC\s{3}([^;]+);[^\n]*\nDE\s{3}([^\n]+)\nBL\s{3}[^\n]*\n([^\000]+)\/\/|o);
+
+
+	# ----------
+	# If the current block does not have any sequence associated with it,
+        # the script will leave the current while loop and terminate.
+	# ----------
+	if (!defined ($block)) {
+	    print STDERR "\nError:  The local sequence alignment for $accession is missing!\n";
+	    last;
+	}  # if (!defined ($block))
+
+
+	# ----------
+	# The file emotif-@VERSION@/tmp/$$.block ($$ is the special variable
+        # that refers to the process number assigned to the script itself
+	# emotif-@VERSION@/build/emotif-build.pl) is created and ready to be
+	# written to.  The filehandle TEMP_BLOCK provides the link between
+	# the script emotif-@VERSION@/build/emotif-build.pl and the file
+	# emotif-@VERSION@/tmp/$$.block.
+	# ----------
+	open (TEMP_BLOCK, ">./tmp/$$.block");
+
+
+	# ----------
+	# The variable $numSequencesInBlock is reset to 0.
+	# ----------
+	$numSequencesInBlock = 0;
+
+
+	# ----------
+	# The locally aligned sequences in the variable $block will be split
+	# on a single newline character "\n".  The result of that split
+	# operation is stored in @blockArray.  The foreach loop will iterate
+	# through @blockArray and dump each sequence in the local sequence
+	# alignment in the variable $record.
+	# ----------
+	@blockArray = split (/\n/, $block);
+
+	foreach $record (@blockArray) {
+
+
+	    # ----------
+	    # The name of the sequence and the sequence itself are extracted
+	    # from a record in the local multiple sequence alignment and
+	    # stored in the variables $name and $sequence, respectively.
+	    # ----------
+	    ($name, $sequence) = 
+		($record =~ m|(\S+)\s+\(.+\)\s([A-Z]+)\s+\d+|o);
+
+	    print TEMP_BLOCK "$sequence\n";
+	    $numSequencesInBlock++;
+	}  # foreach $record (@blockArray)
+
+
+	# ----------
+	# After all the locally aligned sequences associated with one block
+	# have been written to a file, the script
+	# emotif-@VERSION@/build/emotif-build.pl proceeds to close the file
+	# emotif-@VERSION@/tmp/$$.block.  If this statement is omitted, the
+        # file emotif-@VERSION@/tmp/$$.block may not contain all the sequences
+        # it should have.  This close command essentiall forces everything in
+        # the buffer to be written to the file before closing.
+	# ----------
+	close (TEMP_BLOCK);
+
+
+	# ----------
+	# The variable $coveredSequences is reset to 0.
+	# ----------
+	$coveredSequences = 0;
+
+
+	# ----------
+	# The while loop's guard condition ensures that once 90% of the
+	# locally aligned sequences in a given block have been used in the
+	# construction of eMOTIFS, the script
+	# emotif-@VERSION@/build/emotif-build.pl can leave the while loop.
+	# Note that the guard condition does NOT guarantee that each eMOTIF
+	# will recover at least 90% of the locally aligned sequences in a
+	# given block; all it takes for the guard condition to kick the
+	# script emotif-@VERSION@/build/emotif-build.pl out of the while loop
+	# is for the coverage of ALL the eMOTIFS generated during the
+	# tenure of the while loop below to be at least 90%.  Another way
+	# to leave the while loop is if the subroutine FindMotif fails to
+	# find any eMOTIF on a particular iteration.  Although this fact
+	# is not apparent from the lines of code within the while loop
+	# below, Craig requires that an eEMOTIF must recover at least 30% of
+	# the locally aligned sequences in a given block.
+	# ----------
+	while ($coveredSequences < 0.90 * $numSequencesInBlock) {
+	    $numIncorporated = &FindMotif ($accession, $description,
+					   $numSequencesInBlock);
+	    
+	    if ($numIncorporated == 0) {
+		last;
+	    }  # if ($numIncorporated == 0)
+	    
+	    $coveredSequences += $numIncorporated;
+	}  # while ($coveredSequences < 0.90 * $numSequencesInBlock)
+    }  # while (<>)
+
+    `rm -f ./tmp/$$.block`;
+}
+
+
+# ----------
+# Subroutine:  FindMotif
+# ==========
+# This subroutine provides the interface between the script
+# emotif-@VERSION@/build/emotif-build.pl and the program
+# emotif-@VERSION@/src/emotif-maker.  Each call to the subroutine FindMotif,
+# in turn, calls the program emotif-@VERSION@/src/emotif-maker once at the
+# specified specificity for the locally aligned sequences in the file
+# emotif-@VERSION@/tmp/$$.block.  The output of the
+# emotif-@VERSION@/src/emotif-maker program is a list of eMOTIFS; only the
+# most sensitive and the most specific eMOTIF will be chosen from that list
+# and eventually written to the file emotif-@VERSION@/emotifs/emotifs.txt.
+# ----------
+
+sub FindMotif {
+    #------------#
+    # Parameters #
+    #------------#
+    my ($_accession) = $_[0];
+    my ($_description) = $_[1];
+    my ($_numSequencesInBlock) = $_[2];
+
+    #-----------------#
+    # Local Variables #
+    #-----------------#
+    my $bestMotif = "", my $motif = "";
+    my $coveredSequences = 0, my $maxCoveredSequences = 0;
+    my $specificity = 0;
+    my @minSpecificitiesArray = ();
+    local (*EMOTIF_MAKER);
+
+
+    # ----------
+    # During the tenure of the subroutine FindMotif, the special variable $/
+    # will be reset to its default value of "\n".
+    # ----------
+    $/ = "\n";
+
+
+    # ----------
+    # All the locally aligned sequences in the file
+    # emotif-@VERSION@/tmp/$$.block are piped to the program
+    # emotif-@VERSION@/src/emotif-maker.  The output of
+    # the emotif-@VERSION@/src/emotif-maker program will be linked to the
+    # filehandle EMOTIF_MAKER.  If the user has supplied a customized 
+    # alphabet file, that alphabet file will be used; otherwise, the alphabet
+    # file emotif-@VERSION@/share/default is used.
+    # ----------
+    if ($groups_file) {
+	open (EMOTIF_MAKER, "@srcdir@/bin/emotif-maker -a $groups_file -s $stringency < ./tmp/$$.block |");
+    } else {
+	open (EMOTIF_MAKER, "@srcdir@/bin/emotif-maker -s $stringency < ./tmp/$$.block |");
+    }  # if ($groups_file)
+
+
+    # ----------
+    # Now that the special variable $/ has been set back to the default value
+    # of "\n", each iteration of the while loop below will result in one line
+    # of output from Craig's EMOTIF-MAKER program to be read and stored in the
+    # special variable $_.
+    # ----------
+    while (<EMOTIF_MAKER>) {
+	chomp ($_);
+
+	# ----------
+	# One line from the output of the emotif-@VERSION@/src/emotif-maker,
+	# stored in the special variable $_, is being splitted on the tab
+	# character "\t".  The number of sequences that were used to
+	# construct the current eMOTIF regular expression is stored in
+	# the variable $coveredSequences.  The eMOTIF regular expression
+	# itself is stored in the variable $motif.  The specificity of that
+	# eMOTIF regular expression is stored in the variable $specificity.
+	# ----------
+	($coveredSequences, $motif, $specificity) = split(/\t/, $_);
+
+
+	# ----------
+	# If an element in the @minSpecificitiesArray has not been
+	# defined, the element will be initialized to 0.
+	# ----------
+	if (!defined($minSpecificitiesArray[$coveredSequences])) {
+	    $minSpecificitiesArray[$coveredSequences] = 0;
+       	}  # if (!defined($minSpecificitiesArray[$coveredSequences]))
+
+
+	# ----------
+	# If the current eMOTIF regular expression used at least as many
+	# locally aligned sequences as the current maximum 
+	# ($coveredSequences >= $maxCoveredSequences); if the current eMOTIF
+	# regular expression is more specific than the stringency value
+	# ($specificity < -$stringency); and if the current eMOTIF regular
+	# expression is more specific than a previously examined eMOTIF
+	# regular expression that used the same number of locally aligned
+	# sequences from the block being processed, but not necessarily
+	# the same set of locally aligned sequences
+	# ($specificity < $minSpecificitiesArray[$coveredSequences]), the
+	# following lines of code will then update the variable $bestMotif
+	# with the current eMOTIF regular expression.
+	# ----------	
+	if ($coveredSequences >= $maxCoveredSequences && 
+	    $specificity < -$stringency &&
+	    $specificity < $minSpecificitiesArray[$coveredSequences]) {
+
+	    $maxCoveredSequences = $coveredSequences;
+	    $minSpecificitiesArray[$coveredSequences] = $specificity;
+	    $bestMotif = $motif;
+	}  # if ($coveredSequences >= $maxCoveredSequences && 
+	   #     $specificity < -$stringency &&
+	   #     $specificity < $minSpecificitiesArray[$coveredSequences])
+    }  # while (<EMOTIF_MAKER>)
+
+    close(EMOTIF_MAKER);
+
+
+    # ----------
+    # The special variable $/ is set to "//\n" before the script
+    # update-emotifs.pl leaves the subroutine FindMotif.
+    # ----------
+    $/ = "//\n";
+
+
+    # ----------
+    # An eMOTIF never begins or ends with the wild-card character '.'.
+    # The variable $bestMotif, now containing an eMOTIF with optimized both
+    # in terms of specificity and sensitivity, will be processed such that
+    # any initial runs of wild-card characters and final runs of wild card
+    # characters will be removed.
+    # ----------
+    $bestMotif =~ s|^\.+||o;
+    $bestMotif =~ s|\.+$||o;
+
+
+    # ----------
+    # As long as the varible $bestMotif is not empty, and the current
+    # maximum number of locally aligned sequences used ($maxCoveredSequences)
+    # to construct the eMOTIFS is not 0, whatever eMOTIF regular expression
+    # is stored in the variable $bestMotif and that regular expression's
+    # specificity, stored in the variable
+    # $minSpecificitiesArray[$maxCoveredSequences], will be printed to
+    # emotif-@VERSION@/emotifs/emotifs.tmp.  The variables $_accession and
+    # $_description will have all been initialized to their proper values
+    # before the subroutine FindMotif is called.  The variable $_accession is
+    # the accession number of assigned to the local multiple sequence
+    # alignment, and the variable $_description is the free-text description
+    # of that local multiple sequence alignment.  The variable $bestMotif, as
+    # explained earlier, is the eMOTIF regular expression that the
+    # emotif-@VERSION@/src/emotif-maker program has optimized for both
+    # specificity and sensitivity.
+    # ----------
+    if ($bestMotif ne "" && $maxCoveredSequences > 0) {
+	print "$minSpecificitiesArray[$maxCoveredSequences]\t$_accession\t$_description\t$bestMotif\n", 
+    }  # if ($bestMotif ne "" && $maxCoveredSequences > 0)
+
+
+    # ----------
+    # The shell command grep, with both options -v and -i turned on, will take
+    # any sequence in the the file emotif-@VERSION@/tmp/$$.block that contains
+    # the eMOTIF stored in the variable $bestMotif and put all the sequences
+    # that do not contain the eMOTIF in the file
+    # emotif-@VERSION@/tmp/$$.block.tmp.  Option -v tells the command grep to
+    # keep strings that do NOT have a specified regular expression, while
+    # option -i tells the command grep to perform the regular expression
+    # matching in a case-insensitive fashion.  Whatever the shell command grep
+    # writes out will be piped to the file emotif-@VERSION@/tmp/$$.block.tmp.
+    # The shell command mv that follows will then replace the old
+    # emotif-@VERSION@/tmp/$$.block with
+    # emotif-@VERSION@/tmp/$$.block.tmp.
+    # ----------     
+    if ($bestMotif ne "") {
+        `@GREP@ -vi \'$bestMotif\' ./tmp/$$.block > ./tmp/$$.block.tmp
+         mv ./tmp/$$.block.tmp ./tmp/$$.block`;
+    }  # if ($bestMotif ne "")
+
+
+    # ----------
+    # The number of locally aligned sequences in a given block used to
+    # generate an eMOTIF is returned to whatever line of code that called
+    # the subroutine FindMotif.
+    # ----------
+    return ($maxCoveredSequences);
+}
+

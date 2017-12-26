@@ -1,0 +1,38 @@
+#! @PERL@
+
+
+#
+# File:  remove-prints.pl
+# Date:  @DATE@
+# Package:  @SOFTWARE@-@VERSION@
+# Programmer:  Jimmy Y. Huang (@CONTACT_JIMMY@)
+# ------------------------------------------------------------
+#
+# ------------------------------------------------------------
+# @COPYRIGHT@
+# All Rights Reserved.
+# The Leland Stanford Junior University Board of Trustees
+#
+
+
+&Main;
+
+exit;
+
+
+sub Main {
+    #-----------------#
+    # Local Variables #
+    #-----------------#
+    my $block = "", my $accession = "";
+
+    $/ = "//\n";
+
+    while ($block = <>) {
+	if ($block !~ m|AC   PR|o) {
+	    $block =~ s/\n+/\n/g;
+	    print $block;
+	}
+    }
+}
+

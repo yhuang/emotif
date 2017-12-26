@@ -1,0 +1,102 @@
+#! @PERL@
+
+
+#
+# File:  nph-top-score
+# Date:  @DATE@
+# Package:  @SOFTWARE@-@VERSION@
+# Programmers:  Jimmy Y. Huang (@CONTACT_JIMMY@)
+#               Thomas D. Wu (@CONTACT_TOM@)
+#               Craig G. Nevill-Manning (@CONTACT_CRAIG@)
+# ------------------------------------------------------------
+#
+# ------------------------------------------------------------
+# @COPYRIGHT@
+# All Rights Reserved.
+# The Leland Stanford Junior University Board of Trustees
+#
+
+
+$prefix = "@prefix@";
+$exec_prefix = "@exec_prefix@";
+$bindir = "@bindir@";
+$htmldir = "@HTMLDIR@";
+$htmlsubdir = "@HTMLSUBDIR@";
+$cgireldir = "@CGIRELDIR@";
+$cgisubdir = "@CGISUBDIR@";
+$datadir = "@DATADIR_EMOTIF@";
+
+require "./cgi-lib.pl";
+$| = 1;
+&ReadParse();
+
+$menu = `cat $htmldir/$htmlsubdir/menu`;
+
+print <<END;
+HTTP/1.0 200 OK
+Server: CERN/3.0
+Content-type: text/html
+
+<html><head>
+<title>The eMOTIF Universe</title>
+</head>
+<body bgcolor=#FFFFFF vlink=#8777bab alink=#8777bab link=#26246b>
+
+$menu
+
+<img src=/$htmlsubdir/emotif-maker.gif border=0><p>
+
+The score represents the number of bits saved if the sequences were transmitted
+with respect to the motif. For practical purposes, though, just the ranking is
+significant.<p>
+
+END
+
+    if (defined($in{'pareto'})) {
+	open(S, "</tmp/$in{'pid'}.motifs.pareto-optimal");
+    } else {
+    open(M, "</tmp/$in{'pid'}.motifs");
+    
+    open(S, "| sort +3 -nr | head -$in{'number'} > /tmp/$$.top");
+    
+    while (<M>) {
+	chop;
+	($k, $motif, $p) = split(/\t/, $_);
+	print S "$k\t$motif\t$p\t", - $k * $p, "\n";
+    }
+    
+    close(S);
+    close(M);
+    
+    open(S, "</tmp/$$.top");
+}
+print "<table>
+<tr>
+<th align=left>score</th>
+<th align=left>matches</th>
+<th align=left>expected</th>
+<th align=left>motif</th>
+</tr>
+";
+
+while (<S>) {
+    chop;
+    ($k, $motif, $p, $score) = split(/\t/, $_);
+    $p = int($p) + 7;
+    $score = int($score * log(10) / log(2));
+    print "<tr><td>$score</td>
+<td>$k</td>
+<td>10<sup>$p</sup></td>
+<td>
+    <a href=/$cgireldir/$cgisubdir/nph-emotif-scan?motif=$motif&version=2>
+    <img border=0 src=/$htmlsubdir/scan.gif></a>
+    <font face=\"monaco,courier,courier new\" size=-1>$motif</font>
+</td></tr>\n";
+}
+
+print "</table>\n";
+
+print "</body></html>";
+
+exit(0);
+

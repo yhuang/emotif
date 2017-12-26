@@ -1,0 +1,190 @@
+#! @PERL@
+
+
+#
+# File:  eliminate-shoddy-sequences.pl
+# Date:  @DATE@
+# Package:  @SOFTWARE@-@VERSION@
+# Programmer:  Jimmy Y. Huang (@CONTACT_JIMMY@)
+# ------------------------------------------------------------
+# This script is used by the emotif-@VERSION@/Makefile to eliminiate sequences
+# in the file einputs/blocks/blocks.dat that contain any of the characters
+# in the group [BJOUXZ].
+# 
+# Usage:  emotif-@VERSION@/build/eliminate-shoddy-sequences.pl [FILE] 
+#            > einputs/blocks/processed-blocks.dat
+#
+# Before the June-15-1999 release of BLOCKS+, local sequence alignment blocks
+# curateded by other groups were kept in different files.  The alignments
+# from PRINTS were in the file einputs/blocks/prints.dat; the alignments from
+# Pfam were in the file einputs/blocks/pfam.dat; the alignments from ProDom
+# were in the file einputs/blocks/prodom.dat; and the alignments from Domo
+# were in the file einputs/blocks/domo.dat.  The UNIX command cat will
+# concatenate all those files and pipe them to the standard ouptput for the
+# script emotif-@VERSION@/build/eliminate-shoddy-sequences.pl to parse.
+# Starting with the June-15-1999 release of BLOCKS+, everything is stored in
+# one huge file.  This file can be accessed via the web:
+#
+# ftp://ncbi.nlm.nih.gov/repository/blocks/unix/blocksplus-15Jun99/blocks.dat.Z
+#
+# Once obtained and expanded, the blocks.dat file should be in the directory
+# einputs/blocks/.  The UNIX command cat will concatenate all those files
+# and pipe them to the standard ouptput for the script
+# emotif-@VERSION@/build/eliminate-shoddy-sequences.pl to parse.  This script
+# will generate the file einputs/blocks/blocks_clean.dat.
+# ------------------------------------------------------------
+# @COPYRIGHT@
+# All Rights Reserved.
+# The Leland Stanford Junior University Board of Trustees
+#
+
+
+# ----------
+# The special variable $| forces an fflush after every write or print on the
+# output channel currently selected.  Setting this special variable $| to a
+# non-zero value, however, has nothing to do with disabling buffering.
+# ----------
+$| = 1;
+
+
+&Main;
+
+exit;
+
+
+sub Main {
+    #-----------------#
+    # Local Variables #
+    #-----------------#
+    my %shoddySequencesLookup = ();
+
+
+    &IdentifyShoddySequences (\%shoddySequencesLookup);
+    &PrintCleanBlocks (\%shoddySequencesLookup);
+}
+
+
+sub IdentifyShoddySequences {
+    #------------#
+    # Parameters #
+    #------------#
+    my $_ref_ShoddySequencesLookup = $_[0];
+
+    #-----------------#
+    # Local Variables #
+    #-----------------#
+    my $name = "", my $sequence = "";
+    local (*BLOCKS_DAT);
+
+
+    open (BLOCKS_DAT, $ARGV[0]) or die;
+    
+    # ----------
+    # Using the NULL filehandle within the angle operator is special and can
+    # be used to emulate the command-line behavior of typical UNIX filter
+    # programs such as sed and awk.  The <> expression magically yields all
+    # the lines from all the files mentioned on the command line.  If no
+    # files were mentioned, it gets lines from standard input instead.  The
+    # first time <> is evaluated, the @ARGV array is checked, and if it is
+    # NULL, $ARGV[0] is set to "-", which gives the user standard input when
+    # opened.  Note that $ARGV[0] is C's argv[1], and C's argv[0] is Perl's
+    # $0.
+    #
+    #      ID   p99.1.146; BLOCK
+    #      AC   BP00146A; distance from previous block=(1,823)
+    #      DE   PROTEIN POLYMERASE RNA DNA-DIR
+    #      BL   KLL;  width=6; seqs=49; 99.5%=449; strength=902 
+    #      DPSD_CLOPA (  41) KKKLFS  61
+    #
+    #      KSGA_MYCCA (  29) KDQLII  36
+    #
+    #      NU2M_APIME ( 252) KWNLIF  74
+    #
+    #                  .
+    #                  .
+    #                  .
+    #
+    #      EPIB_STAEP ( 296) KNYLQI  47
+    #       SYD_BUCAP ( 153) KNFLDI  31
+    #      //
+    # ----------
+    while (<BLOCKS_DAT>) {
+	# ----------
+	# If the special variables $_ contains only the newline character "\n",
+	# skip to the next line.
+	# ----------
+	if ($_ eq "\n") {
+	    next;
+
+
+	# ----------
+	# The name of a particular sequence and the sequence itself are
+        # extracted and stored in the variables $name and $sequence,
+	# respectively.
+        # ----------
+	} elsif ($_ =~ m|(\S+)\s+\(.+\)\s([A-Z]+)\s+\d+|o) {
+	    $name = $1;
+	    $sequence = $2;
+
+
+	    # ----------
+	    # If the sequence contains any of the characters in the
+	    # group [BJOUXZ], it will be stored in @shoddySequencesArray.
+	    # ----------
+	    if ($sequence =~ m|[BJOUXZ]|o) {
+		$$_ref_ShoddySequencesLookup{$name} = "";
+		next;
+	    }
+	} else {
+	}
+    }  # while (<BLOCKS_DAT>)
+
+    close (BLOCKS_DAT);
+}
+
+
+sub PrintCleanBlocks {
+    #------------#
+    # Parameters #
+    #------------#
+    my $_ref_ShoddySequencesLookup = $_[0];
+
+    #-----------------#
+    # Local Variables #
+    #-----------------#
+    my $name = "", my $sequence = "";
+    local (*BLOCKS_DAT);
+
+
+    open (BLOCKS_DAT, $ARGV[0]) or die;
+
+    while (<BLOCKS_DAT>) {
+	# ----------
+	# If the special variables $_ contains only the newline character "\n",
+	# skip to the next line.
+	# ----------
+	if ($_ eq "\n") {
+	    next;
+
+
+	# ----------
+	# The name of a particular sequence and the sequence itself are
+        # extracted and stored in the variables $name and $sequence,
+	# respectively.
+        # ----------
+	} elsif ($_ =~ m|(\S+)\s+\(.+\)\s([A-Z]+)\s+\d+|o) {
+	    $name = $1;
+	    $sequence = $2;
+
+	    if (defined ($$_ref_ShoddySequencesLookup{$name})) {
+		next;
+	    }
+	} else {
+	}
+
+	print $_;
+    } # while (<BLOCKS_DAT>)
+
+    close (BLOCKS_DAT);
+}
+

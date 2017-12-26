@@ -1,0 +1,190 @@
+#! @PERL@
+
+
+#
+# File:  process-raw-emotifs.pl
+# Date:  @DATE@
+# Package:  @SOFTWARE@-@VERSION@
+# Programmer:  Jimmy Y. Huang (@CONTACT_JIMMY@)
+# --------------------------------------------------------
+#
+# --------------------------------------------------------
+# @COPYRIGHT@
+# All Rights Reserved.
+# The Leland Stanford Junior University Board of Trustees 
+#
+
+
+# ----------
+# The special variable $| forces an fflush after every write or print on the
+# output channel currently selected.  Setting this special variable $| to a
+# non-zero value, however, has nothing to do with disabling buffering.
+# ----------
+$| = 1;
+
+
+&Main;
+
+exit;
+
+
+sub Main {
+    #-----------------#
+    # Local Variables #
+    #-----------------#
+    my %rawMotifsSortedByBlocks = ();
+    local (*EMOTIFS_UNIQ), local (*CLEAN_BLOCKS);
+
+
+    open (EMOTIFS_UNIQ, "$ARGV[0]");
+    open (CLEAN_BLOCKS, "$ARGV[1]");
+
+    &SortRawMotifsByBlocks (EMOTIFS_UNIQ, \%rawMotifsSortedByBlocks);
+    &CalculateSensitivity (CLEAN_BLOCKS, \%rawMotifsSortedByBlocks);
+
+    close (CLEAN_BLOCKS);
+    close (EMOTIFS_UNIQ);
+}
+
+
+# ----------
+# Subroutine:  SortRawMotifsByBlocks
+# ==========
+#
+# ----------
+
+sub SortRawMotifsByBlocks {
+    #------------#
+    # Parameters #
+    #------------#
+    local (*EMOTIFS_UNIQ) = $_[0];
+    my ($_ref_RawMotifsSortedByBlocks) = $_[1];
+
+    #-----------------#
+    # Local Variables #
+    #-----------------#
+    my $specificity = 0, my $accession = "", my $description = "";
+    my $motif = "";
+    my $motifRecord = "";
+
+
+    while (<EMOTIFS_UNIQ>) {
+	chomp ($_);
+
+        ($specificity, $accession, $description, $motif) = 
+	    split (/\t/, $_);
+
+	if ($specificity > -5.0) {
+	    next;
+	}
+
+	$motifRecord = "$specificity\t$accession\t$motif";
+	push (@{$$_ref_RawMotifsSortedByBlocks{$accession}}, $motifRecord);
+    }
+}
+
+
+# ----------
+# Subroutine:  CalculateSensitivity
+# ==========
+#
+# ----------
+
+sub CalculateSensitivity {
+    #------------#
+    # Parameters #
+    #------------#
+    local (*CLEAN_BLOCKS) = $_[0];
+    my ($_ref_RawMotifsSortedByBlocks) = $_[1];
+
+    #-----------------#
+    # Local Variables #
+    #-----------------#
+    my $specificity = 0, my $accession = "", my $description = "";
+    my $motif = "", my $block = "";
+    my $motifRecord = "", my $blockRecord = "";
+    my $name = "", my $sequence = "";
+    my $numSequencesInBlock = 0, my $numSequencesRecovered = 0;
+    my $sensitivity = 0;
+    my @blockRecordArray = (), my @motifRecordArray = ();
+    my @sequenceArray = ();
+
+
+    # ----------
+    # The special variable $/ specifies the input record separator.  The
+    # default value for this special variable is the newline character "\n".
+    # The special variable $/ is set to "//\n", since each local sequence
+    # alignment record in the file blocks.dat is separated by the "//\n"
+    # characters.
+    # ----------
+    $/ = "//\n";
+
+
+    while (<CLEAN_BLOCKS>) {
+	($accession, $description, $block) = ($_ =~ m|ID\s{3}.+;\sBLOCK[^\n]*\nAC\s{3}([^;]+);[^\n]*\nDE\s{3}([^\n]+)\nBL\s{3}[^\n]*\n([^\000]+)\/\/|o);
+
+
+	# ----------
+	# If the current block does not have any sequence associated with it,
+        # the script will leave the current while loop and terminate.
+	# ----------
+	if (!defined ($block)) {
+	    print STDERR "\nError:  The local sequence alignment for $accession is missing!\n";
+	    last;
+	}  # if (!defined ($block))
+
+
+	# ----------
+	# The variable $numSequencesInBlock is reset to 0.
+	# ----------
+	$numSequencesInBlock = 0;
+
+	# ----------
+	# The locally aligned sequences in the variable $block will be split
+	# on a single newline character "\n".  The result of that split
+	# operation is stored in @blockArray.  The foreach loop will iterate
+	# through @blockArray and dump each sequence in the local sequence
+	# alignment in the variable $record.
+	# ----------
+	@blockRecordArray = split (/\n/, $block);
+
+        foreach $blockRecord (@blockRecordArray) {
+
+            # ----------
+            # The name of the sequence and the sequence itself are
+	    # extracted from a record in the local multiple sequence
+	    # alignment and stored in the variables $name and $sequence,
+	    # respectively.
+            # ----------
+            ($name, $sequence) = 
+		($blockRecord =~ m|(\S+)\s+\(.+\)\s([A-Z]+)\s+\d+|o);
+
+		push (@sequenceArray, $sequence);
+        	$numSequencesInBlock++;
+	}  # foreach $blockRecord (@blockRecordArray)
+
+	@blockRecordArray = ();
+
+	foreach $motifRecord (@{$$_ref_RawMotifsSortedByBlocks{$accession}}) {
+	    ($specificity, $accession, $motif) = split (/\t/, $motifRecord);    
+	    $numSequencesRecovered = 0;
+
+	    foreach $sequence (@sequenceArray) {
+		if ($sequence =~ m|$motif|i) {
+		    $numSequencesRecovered++;
+                }
+	    }
+
+	    if ($numSequencesRecovered <= 1) {
+	    	next;
+	    }
+
+	    $sensitivity = int ($numSequencesRecovered / $numSequencesInBlock * 100);
+
+	    print "$specificity\t$accession\t$description\t$motif\t$sensitivity%\n";
+        }
+
+	@sequenceArray = ();
+    }
+}
+

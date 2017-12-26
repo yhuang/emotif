@@ -1,0 +1,149 @@
+dnl Process this file with autoconf to produce a configure script.
+AC_INIT(src)
+
+AC_SUBST(COPYRIGHT)
+AC_SUBST(DATE)
+AC_SUBST(SOFTWARE)
+AC_SUBST(VERSION)
+AC_SUBST(CONTACT_CRAIG)
+AC_SUBST(CONTACT_CRAIG_CGI)
+AC_SUBST(CONTACT_CRAIG_HTML)
+AC_SUBST(CONTACT_DOUG)
+AC_SUBST(CONTACT_DOUG_CGI)
+AC_SUBST(CONTACT_DOUG_HTML)
+AC_SUBST(CONTACT_JIMMY)
+AC_SUBST(CONTACT_JIMMY_CGI)
+AC_SUBST(CONTACT_JIMMY_HTML)
+AC_SUBST(CONTACT_TOM)
+AC_SUBST(CONTACT_TOM_CGI)
+AC_SUBST(CONTACT_TOM_HTML)
+AC_SUBST(BLOCKS_RELEASE)
+AC_SUBST(PRINTS_RELEASE)
+
+. ./site.defs
+AC_SUBST(HTMLDIR)
+AC_SUBST(HTMLSUBDIR)
+AC_SUBST(CGIDIR)
+AC_SUBST(CGIRELDIR)
+AC_SUBST(CGISUBDIR)
+AC_SUBST(LOCAL_DIR)
+AC_SUBST(DATA_SUBDIR_EMOTIFS)
+AC_SUBST(DATA_SUBDIR_SEQUENCES)
+AC_SUBST(DATADIR_EMOTIF)
+AC_SUBST(AVAIL_GROUPS)
+AC_SUBST(DEFAULT_GROUPS)
+AC_SUBST(RAW_BLOCKS_INPUT)
+AC_SUBST(RAW_EBLOCKS_INPUT)
+AC_SUBST(RAW_PRINTS_INPUT)
+AC_SUBST(SPROT_INPUT)
+AC_SUBST(SEQUENCE_INPUT)
+AC_SUBST(DEFAULT_SEARCH_THRESHOLD)
+AC_SUBST(SEQUENCES_FOR_PERL)
+
+AC_DEFUN(MY_CHECK_PROG,[
+AC_PATH_PROG($1, $2, no)
+if test $$1 = no; then
+AC_MSG_ERROR([
+    Cannot locate the program $2, which is required.
+    Please install the program and make sure it is in your PATH.
+    If you have the program, but it is not in your PATH, you may set environment variable
+$1 to the program, delete config.cache (if present), and run configure again.])
+fi
+AC_SUBST($1)dnl
+])
+
+AC_DEFUN(MY_CHECK_PROG_NETPBM,[
+AC_PATH_PROG($1, $2, no)
+if test $$1 = no; then
+AC_MSG_ERROR([
+    Cannot locate the program $2, which is required.
+    Please install the program and make sure it is in your PATH.
+    This program is part of the 'netpbm' package at ftp://ftp.x.org/contrib/utilities.
+    If you have the program, but it is not in your PATH, you may set environment variable
+$1 to the program, delete config.cache (if present), and run configure again.])
+fi
+AC_SUBST($1)dnl
+])
+
+dnl Checks for programs.
+AC_PROG_MAKE_SET
+AC_PROG_CC
+AC_PROG_CXX
+AC_PROG_INSTALL
+MY_CHECK_PROG(PERL,perl)
+changequote(<<, >>)dnl
+PERL_MAJORVERS=`$PERL -v | grep 'This is perl' | sed -e 's/.*This is perl,[^0-9]*\([0-9]*\)\..*/\1/'`
+PERL_MINORVERS=`$PERL -v | grep 'This is perl' | sed -e 's/.*This is perl,[^0-9]*[0-9]*\.\([0-9]*\).*/\1/'`
+changequote([, ])dnl
+echo Perl version is $PERL_MAJORVERS.$PERL_MINORVERS
+if test $PERL_MAJORVERS -lt 5; then
+AC_MSG_ERROR([This package requires Perl version 5.002 or higher.])
+fi
+if test $PERL_MINORVERS -lt 002; then
+AC_MSG_ERROR([This package requires Perl version 5.002 or higher.])
+fi
+
+MY_CHECK_PROG(GNUPLOT,gnuplot)
+MY_CHECK_PROG(AGREP,agrep)
+MY_CHECK_PROG(GREP,grep)
+MY_CHECK_PROG_NETPBM(PPMTOGIF,ppmtogif)
+MY_CHECK_PROG_NETPBM(PNMCROP,pnmcrop)
+MY_CHECK_PROG_NETPBM(PNMFILE,pnmfile)
+MY_CHECK_PROG_NETPBM(PNMINVERT,pnminvert)
+MY_CHECK_PROG_NETPBM(PNMDEPTH,pnmdepth)
+MY_CHECK_PROG_NETPBM(PNMARITH,pnmarith)
+MY_CHECK_PROG_NETPBM(GIFTOPNM,giftopnm)
+MY_CHECK_PROG_NETPBM(PSTOPNM,pstopnm)
+MY_CHECK_PROG_NETPBM(PNMSCALE,pnmscale)
+MY_CHECK_PROG_NETPBM(PPMQUANT,ppmquant)
+
+
+dnl Checks for libraries.
+
+dnl Checks for header files.
+AC_HEADER_STDC
+
+dnl Checks for typedefs, structures, and compiler characteristics.
+
+dnl Checks for library functions.
+
+AC_OUTPUT(Makefile \
+          build/prints-to-blocks.pl\
+          build/remove-prints.pl\
+          build/eliminate-shoddy-sequences.pl \
+	  build/emotif-build.pl \
+          build/process-raw-emotifs.pl \
+          build/reformat-fasta.pl \
+          build/enumerate-all-subblocks.pl \
+          src/gradient.cc \
+          src/myppmchange.c \
+          src/dejavu.h \
+          src/emotif-maker.cc \
+          src/emotif.h \
+          src/emotif.c \
+          src/darray.c \
+          src/darray.h \
+          src/scanner.c \
+          src/scanner.h \
+          src/fwrite-emotifs.c \
+          src/fwrite-sequences.c \
+          src/emotif-search.c \
+          src/motifgrep.cc \
+          src/list-non-biased-emotifs.c \
+          bin/columns-graph.pl \
+          bin/gap.pl \
+          bin/plot.pl \
+          cgi-bin/cgi-lib.pl \
+          cgi-bin/nph-emotif-maker \
+          cgi-bin/nph-emotif-scan \
+          cgi-bin/nph-emotif-search \
+          cgi-bin/nph-make-page \
+          cgi-bin/nph-reformat \
+          cgi-bin/nph-top-scores \
+          html/emotif-maker.html \
+          html/emotif-scan.html \
+          html/emotif-search.html \
+          html/index.html html/menu \
+          LICENSE \
+          README)
+

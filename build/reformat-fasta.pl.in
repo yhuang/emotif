@@ -1,0 +1,50 @@
+#! @PERL@
+
+
+#
+# File:  reformat-fasta.pl
+# Date:  @DATE@
+# Package:  @SOFTWARE@-@VERSION@
+# Programmers:  Jimmy Y. Huang (@CONTACT_JIMMY@)
+# ------------------------------------------------------------
+#
+# ------------------------------------------------------------
+# @COPYRIGHT@ 
+# All Rights Reserved.
+# The Leland Stanford Junior University Board of Trustees
+#
+
+
+&Main;
+
+exit;
+
+
+sub Main {
+    #-----------------#
+    # Local Variables #
+    #-----------------#
+    my $sequence = "", my $description = "";
+
+
+    while ($line = <STDIN>) {
+	chomp ($line);
+
+	if ($line =~ m|^>\!*(.+)|o) {
+	    if ($sequence ne "" && $description ne "") {
+		print "$sequence\t$description\n";
+	    }
+
+	    $description = $1;
+	    $sequence = "";
+	} else {
+	    $line =~ s|\s+||go;
+	    $sequence .= $line;
+	}
+    }
+
+    if (length ($sequence)) {
+	print "$sequence\t$description\n";
+    }
+}
+

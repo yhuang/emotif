@@ -1,0 +1,129 @@
+#! @PERL@
+
+
+#
+# File:  gap.pl
+# Date:  @DATE@
+# Package:  @SOFTWARE@-@VERSION@
+# Programmers:  Craig G. Nevill-Manning (@CONTACT_CRAIG@)
+#               Thomas D. Wu (@CONTACT_TOM@)
+#               Jimmy Y. Huang (@CONTACT_JIMMY@)
+# ------------------------------------------------------------
+#
+# ------------------------------------------------------------
+# @COPYRIGHT@
+# All Rights Reserved.
+# The Leland Stanford Junior University Board of Trustees
+#
+
+
+$prefix = "@prefix@";
+$exec_prefix = "@exec_prefix@";
+$bindir = "@bindir@";
+
+$argv = join(' ', @ARGV);
+
+undef @ARGV;
+
+# short-circuit the gap processssing in the case of normal input file
+
+seek STDIN, 0, 0;
+if(! grep /-/, <STDIN>) {
+    #print "Bypassing gap process\n";
+    seek STDIN, 0, 0;
+    open TEMP, ">/tmp/tmp.$$" || die "Can't open file for output";
+    print TEMP <STDIN>;
+    close TEMP;
+    exec "$bindir/emotif-maker $argv < /tmp/tmp.$$; rm /tmp/tmp.$$";
+    exit 1;
+}
+
+
+# first pass: read in the file, find all the gap positions
+seek STDIN, 0, 0;
+#@count=();
+$n = length(<>);
+for (my $i=0; $i < $n; $i++) {
+    $count[$i] = 0;
+}
+
+seek STDIN, 0, 0;
+while(<>) {
+    while(/-/g) {   # PERL: p199
+	$count[(pos $_) - 1] = 1;        # set the flag for the gap position
+	# print pos $_, "\n";            # debugging
+    }
+}
+
+# second pass: strip off each line on the gap positions,
+#              and write the output to a temporary file
+
+seek STDIN, 0, 0;
+open TMPOUT, ">/tmp/tmp.$$" || die "Can't open file for writing";
+
+
+while(<STDIN>) {
+    LINE: for($i=$n-1; $i >= 0; $i--) {
+	    #print "$i => $count[$i] ;";
+	    if($count[$i] != 0) {
+		substr($_, $i, 1) = "";
+	    }
+	  } 
+    print TMPOUT $_;
+}
+close TMPOUT;
+
+
+
+# execute the emotif
+#print "$bindir/emotif-maker $argv < tmp.$$ > out.$$ \n";
+`$bindir/emotif-maker $argv < /tmp/tmp.$$ > /tmp/out.$$`;
+
+
+# reformat the output file according to @count
+open NEWOUT, "+</tmp/out.$$" || die "Can't open file for output";
+while(<NEWOUT>) {
+    my(@new, @buf, $tmp);
+
+    if(/([0-9.-]+\s+)([^\s]+)(\s+.*)/) {
+	@buf = unpack "a" x length($2), $2;
+	#print join " ", @buf, "\n";
+	for($i = 0; $i < $n - 1; $i++) {  # $n -1 corresponds to "\n" ???
+	    if($count[$i]) {  # should be '?'
+		$new[$i] = ".?";
+	    }
+	    else { # shift '.' or [xxx] from $buf
+		$tmp = shift @buf;
+		if(! ($tmp eq "[")) {
+		    $new[$i] = $tmp;
+		}
+		else {
+		    $new[$i] = $tmp;
+		    while(1) {
+			if(($tmp = shift @buf) eq "]") {
+			   $new[$i] .= $tmp;
+			   last;
+			}
+			$new[$i] .= $tmp;			
+		    }
+		}
+	    }
+	}
+	print $1, @new, $3, "\n";
+    }
+}
+close NEWOUT;
+
+#close TEST;
+
+# remove temporary files
+unlink "/tmp/out.$$", "/tmp/tmp.$$" || die "Can't remove temporary files";
+
+
+
+
+
+
+
+
+

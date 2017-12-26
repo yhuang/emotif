@@ -1,0 +1,79 @@
+<HTML>
+
+<HEAD>
+<TITLE>eMOTIF-SCAN (Sequence Database Search)</TITLE>
+</HEAD>
+
+<body bgcolor=#FFFFFF link=#26246b alink=#8777bab vlink=#8777bab>
+
+<map name=menu>
+<area coords=0,12,151,30 href="/@HTMLSUBDIR@/emotif-maker.html" target=_top>
+<area coords=0,34,151,52 href="/@HTMLSUBDIR@/emotif-scan.html" target=_top>
+<area coords=0,56,151,73 href="/@HTMLSUBDIR@/emotif-search.html" target=_top>
+</map>
+<img src="/@HTMLSUBDIR@/menu.gif" usemap=#menu align=right border=0>
+
+<img src="/@HTMLSUBDIR@/emotif-scan.gif" border=0>
+
+<p>
+<a href="@CONTACT_JIMMY_HTML@">Jimmy Y. Huang</a>, 
+<a href="@CONTACT_TOM_HTML@">Thomas D. Wu</a>, 
+<a href="@CONTACT_CRAIG_HTML@">Craig G. Nevill-Manning</a>, and 
+<a href="@CONTACT_DOUG_HTML@">Douglas L. Brutlag</a>
+
+<p>
+<form method=post action=/@CGIRELDIR@/@CGISUBDIR@/nph-emotif-scan>
+
+<p>
+Enter an <i>e</i>M<font size="-1">OTIF</font> regular expression<sup><b><font size="-1">*</font></b></sup>:
+<br>
+
+<input type=text name=motif size=60>
+Allow 
+<select name=mismatches>
+<option>0
+<option>1
+<option>2
+<option>3
+<option>4
+</select>
+mismatches
+
+<p>
+<input type=image src="/@HTMLSUBDIR@/retrieve-sequences.gif" border=0>
+
+<a href="/@CGIRELDIR@/@CGISUBDIR@/nph-make-page?form=emotif-scan.html&tag=text&example=scan-example.txt"><img src="/@HTMLSUBDIR@/example-emotif.gif" border=0></a>
+
+<a href="/@HTMLSUBDIR@/emotif-scan.html"><img src="/@HTMLSUBDIR@/clear-emotif.gif" border=0></a>
+</form>
+
+<p>
+Approximate matching uses
+<i><a href="http://glimpse.cs.arizona.edu/udi.html">agrep</a></i>.
+<p>
+
+<hr>
+<p>
+<sup><b><font size="-1">*</font></b></sup> A regular expression may contain:
+<table>
+<tr><td><pre>a, c, d...</td>
+<td>letters for specific amino acids, in upper or lower case</td></tr>
+<tr><td><pre>[fwy]</td>
+<td>groups of amino acids where either f, w or y may appear in this
+position</td></tr>
+<tr><td><pre>.</td>
+<td>any amino acid</td></tr>
+</table>
+
+<p>
+<table>
+<td><a href="/@HTMLSUBDIR@/database-paper.pdf"><img src="/@HTMLSUBDIR@/pdf.gif" border=0></a></td>
+<td><img src="/@HTMLSUBDIR@/reference-1.gif"></td>
+</table>
+<table>
+<td><a href="/@HTMLSUBDIR@/emotif-paper.pdf"><img src="/@HTMLSUBDIR@/pdf.gif" border=0></a></td>
+<td><img src="/@HTMLSUBDIR@/reference-2.gif"></td>
+</table>
+
+</body>
+</html>

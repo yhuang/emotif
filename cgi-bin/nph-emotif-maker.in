@@ -1,0 +1,468 @@
+#! @PERL@
+
+
+#
+# File:  nph-emotif-maker
+# Date:  @DATE@
+# Package:  @SOFTWARE@-@VERSION@
+# Programmers:  Jimmy Y. Huang (@CONTACT_JIMMY@)
+#               Thomas D. Wu (@CONTACT_TOM@)
+#               Craig G. Nevill-Manning (@CONTACT_CRAIG@)
+# ------------------------------------------------------------
+#
+# ------------------------------------------------------------
+# @COPYRIGHT@
+# All Rights Reserved.
+# The Leland Stanford Junior University Board of Trustees
+#
+
+
+$prefix = "@prefix@";
+$exec_prefix = "@exec_prefix@";
+$bindir = "@bindir@";
+$htmldir = "@HTMLDIR@";
+$htmlsubdir = "@HTMLSUBDIR@";
+$cgireldir = "@CGIRELDIR@";
+$cgisubdir = "@CGISUBDIR@";
+$datadir = "@DATADIR_EMOTIF@";
+require "./cgi-lib.pl";
+
+$| = 1;
+
+&ReadParse();
+
+#&get_block() if ($in{'sequences'} =~ /^BL0/ || $in{'sequences'} =~ /^block:/);
+
+$menu = `cat $htmldir/$htmlsubdir/menu`;
+
+print <<END;
+HTTP/1.0 200 OK
+Server: CERN/3.0
+Content-type: text/html
+
+<html><head>
+<title>The eMOTIF Universe</title>
+</head>
+<body bgcolor=#FFFFFF vlink=#8777bab alink=#8777bab link=#26246b>
+
+$menu
+
+<img src="/$htmlsubdir/emotif-maker.gif" border=0><p>
+
+<p>
+<a href="@CONTACT_JIMMY_CGI@">Jimmy Y. Huang</a>, 
+<a href="@CONTACT_TOM_CGI@">Thomas D. Wu</a>, 
+<a href="@CONTACT_CRAIG_CGI@">Craig G. Nevill-Manning</a>, and 
+<a href="@CONTACT_DOUG_CGI@">Douglas L. Brutlag</a>
+
+<p>
+
+END
+
+if ($in{'action'} eq "Summarize") { bars(); }
+elsif (defined($in{'graph.x'})) { click(); }
+else { show(); }
+
+#foreach $x (keys(%in)) { print "$x: $in{$x}<br>\n"; }
+
+print "</body></html>\n";
+
+exit(0);
+
+##############################################################################
+sub write_sequences {
+    $s = $in{"sequences"} . "\n";
+
+    open(F, ">/tmp/$$.orig"); print F $s; close(F);
+
+    $s = from_blocks($s) if ($s =~ /[\)_]/);
+
+    $s =~ s/<br>/\n/g;
+    $s =~ s///g;
+    $s =~ s/ //g;
+    $s =~ s/\n+/\n/g;
+    $s =~ s/^\n//g;
+    $s =~ tr/a-z/A-Z/;
+
+
+    @x = $s =~ /\n/g;
+
+    if (scalar(@x) < 2) {
+	print "Your sequences are incorrectly formatted<p>\n";
+	return;
+    }
+
+    if ($s =~ /[^A-Z\n-]/) {
+	print "Removing strange characters: please send amino acid sequences only.\n";
+	$s =~ s/[^A-Z\n-]//g;
+    }
+
+    open(F, ">/tmp/$$"); print F $s; close(F);
+}
+
+sub show {
+#    `echo EMotif $ENV{'REMOTE_HOST'} | mail cnevill`;
+
+    &write_sequences();
+
+    
+    $contours = "";     $contours     = "-c" if ($in{'contours'}     eq "on");
+    $distribution = ""; $distribution = "-L" if ($in{'distribution'} eq "local");
+    $resolution = "";   $resolution   = "-d" if ($in{'high-res'}     eq "on");
+    $quick = "";        $quick        = "-q" if ($in{'quick'}        eq "on");
+
+    if ($in{'groups'} eq "user") {
+	open(G, ">/tmp/$$.groups"); 
+	print G "A\nC\nD\nE\nF\nG\nH\nI\nK\nL\nM\nN\nP\nQ\nR\nS\nT\nV\nW\nY\n";
+	$in{"usergroups"} =~ s/[^A-Z\n]//g;
+	print G $in{"usergroups"}; 
+	close(G);
+	$in{'groups'} = "/tmp/$$.groups";
+    }
+
+    $mismatches = "";
+    $mismatches = "-e 1 " if ($in{'mismatches'} eq "on");
+
+    `$bindir/gap.pl $mismatches -c $in{'minimum'} -a $datadir/$in{'groups'} $quick < /tmp/$$ > /tmp/$$.motifs`;
+
+    if (-z "/tmp/$$.motifs") {
+	print "EMotif was unable to form any motifs.<br>
+Check that you have several aligned sequences that are less than 400 symbols long.
+<br></body></html>";
+	exit(0);
+    }
+
+`$bindir/plot.pl -f /tmp/$$.motifs $contours $distribution $resolution
+ mv /tmp/$$.motifs.gif $htmldir/$htmlsubdir/motifs/`;
+
+    ($minx, $maxx, $miny, $maxy, $motifs) =
+	`cat /tmp/$$.motifs.info` =~ 	  
+	    /^scale: (\d+)\.\.(\d+), ([-0-9.]+)\.\.([-0-9.]+) (\d+)/;
+    print "Identified <i>$motifs</i> motifs<br>\n";
+
+    $maxp = int($maxy - 0.5) + 7;
+    $minp = int($miny - 0.5) + 7;
+
+    $label = "<img src=\"/$htmlsubdir/graph-label.gif\">";
+    if ($in{'distribution'} eq "local") {
+	$label = "";
+	$maxp -= 7;
+	$minp -= 7;
+    }
+
+    print "
+<form method=post action=/$cgireldir/$cgisubdir/nph-emotif-maker>
+
+<table><tr>
+<td rowspan=2>$label</td>
+<td valign=top>10<sup>$maxp</sup></td>
+<td rowspan=2 colspan=2>
+<input type=image name=graph src=\"/$htmlsubdir/motifs/$$.motifs.gif\">
+<input type=hidden name=pid value=$$>
+</td></tr>
+<tr><td valign=bottom>10<sup>$minp</sup></td></tr>
+<tr><td></td><td></td><td align=left>$minx</td><td align=right>$maxx</td></tr>
+<tr><td></td><td></td><td colspan=2 align=center><font size=-1><b>True Positives</b></font></td></tr>
+</table>
+</form>
+
+<form method=get action=/$cgireldir/$cgisubdir/nph-top-scores>
+<input type=submit value=Retrieve> top <input type=text name=number value=30 size=2> <i>e</i><font size=-1>MOTIF</font>s<br>
+<input type=hidden name=pid value=$$>
+</form>
+
+<form method=get action=/$cgireldir/$cgisubdir/nph-top-scores>
+<input type=submit value=Retrieve> Pareto-optimal <i>e</i><font size=-1>MOTIF</font>s<br>
+<input type=hidden name=pid value=$$>
+<input type=hidden name=pareto value=yes>
+</form>
+";
+
+    &blurb;
+}
+
+sub click {
+    $file = $in{'pid'};
+
+    $x = $in{'graph.x'};
+    $y = $in{'graph.y'};
+
+    ($minx, $maxx, $miny, $maxy) =
+	`cat /tmp/$file.motifs.info` =~ 	  
+	    /^scale: (\d+)\.\.(\d+), ([-0-9.]+)\.\.([-0-9.]+)/;
+    ($imagex, $imagey) = `@GIFTOPNM@ < \\
+                          $htmldir/$htmlsubdir/motifs/$file.motifs.gif | \\
+                          @PNMFILE@` =~
+			      /(\d+) by (\d+)/;
+				  
+
+    $k = int($minx + $x / $imagex * ($maxx - $minx) + 0.5);
+    $p = $maxy - $y / $imagey * ($maxy - $miny);
+
+#    print "$file, $x, $y<p>$minx $maxx $miny, $maxy<p>\n$imagex, $imagey<p>k = $k, p = $p<p>";
+
+
+    open(M, "</tmp/$file.motifs");
+
+    $min = 100000;
+
+    while (<M>) {
+	chop;
+	($k1, $motif1, $p1, $x1) = split(/\t/, $_);
+	next unless ($k1 == $k);
+	if (abs($p1 - $p) < $min) {
+	    $min = abs($p1 - $p);
+	    $score = - int($k1 * $p1);
+	    $motif = $motif1;
+	}
+    }
+    close(M);
+
+    $motif =~ s/^\.+//;
+    $motif =~ s/\.+$//;
+
+    $magnitude = -int($p - 0.5);
+    $expected = int(10 ** $p * 20000000);
+    if ($expected < 1) { $expected = "less than 1 sequence" }
+    else { $expected .= " sequences"; }
+
+    print "This motif matches $k out of the $maxx sequences supplied.<br>
+It will match 1 in 10 <sup>$magnitude</sup> random sequences,
+or $expected in the current <font size=-1>SWISS-PROT
+</font> database<p>\n";
+
+    if ($expected > 1000) {
+	$size = int($expected * 300 / 1000);
+	print "<i>Careful: clicking on the magnifying glass will result in a $size kilobyte page being returned</i><p>\n";
+    }
+
+    open(S, "</tmp/$file");
+
+    $newmotif = $motif;
+    $printmotif = $motif;
+    $note = "";
+    $perlmotif = $motif;
+
+    if ($newmotif =~ /-1/) {
+	$newmotif =~ s/-1 //;
+	$perlmotif = one_error($newmotif);
+	$printmotif = "$newmotif";
+	$note = " with one mismatch allowed";
+	
+	$newmotif .= "&mismatches=1";
+    }
+
+    print <<END;
+    <a href="/$cgireldir/$cgisubdir/nph-emotif-scan?motif=$newmotif&version=2">
+    <img border=0 src=\"/$htmlsubdir/scan.gif\"></a>
+    <font face=\"monaco,courier,courier new\" size=-1>$printmotif</font>$note
+END
+
+    $included = "";
+    $included_with_cr = "";
+    $excluded = "";
+    $excluded_with_cr = "";
+
+    while (<S>) {
+	if ($_ =~ /$perlmotif/i) { 
+	    $included .= "$_<br>";
+	    $included_with_cr .= "$_";
+	} else { 
+	    $excluded .= "$_<br>"; 
+	    $excluded_with_cr .= "$_";
+	}
+    }
+    close(S);
+
+print <<END;
+
+<table>
+<tr><th>Included</th><th>Excluded</th></tr>
+
+<tr><td valign=top>
+<font face=\"monaco,courier,courier new\" size=-1>$included</font></td>
+</font>
+</td>
+<td valign=top><font face=\"monaco,courier,courier new\" size=-1>
+$excluded
+</font></td>
+</font>
+</td></tr>
+
+<tr>
+<td>
+<form method=post action=/$cgireldir/$cgisubdir/nph-make-page>
+<input type=hidden name=form value=emotif-maker.html>
+<input type=hidden name=tag value=TEXTAREA>
+<input type=hidden name=sequences value="$included_with_cr">
+<input type=submit value=Find> more <i>e</i><font size=-1>MOTIF</font>s<br>
+</form>
+
+</td>
+<td>
+END
+    
+
+    if ($excluded ne "") {
+	
+	print <<END;
+	
+<form method=post action=/$cgireldir/$cgisubdir/nph-make-page>
+<input type=hidden name=form value=emotif-maker.html>
+<input type=hidden name=tag value=TEXTAREA>
+<input type=hidden name=sequences value="$excluded_with_cr">
+<input type=submit value=Find> more <i>e</i><font size=-1>MOTIF</font>s<br>
+</form>
+
+END
+}
+
+    print <<END;
+</td>
+
+</table>
+
+END
+
+}
+
+sub blurb {
+    print <<END;
+<hr>
+<b>Click on the graph!</b><p>
+
+Each point in the graph corresponds to a motif. The coordinates of the point indicate:
+<ul>
+<li>the number of sequences that the motif covers (horizontal axis)</li>
+<li>the number of  sequences that the motif is likely to match by chance in the 
+<font size=-1>SWISS-PROT</font> database (vertical axis). This scale is logarithmic.</li>
+</ul>
+
+The dashed horizontal line (if it appears) indicates the point where a motif is
+likely to match one sequence in the database by chance. Motifs that are some
+distance above this line are unlikely to be useful, because they will match
+many spurious sequences.<p>
+
+The dotted line identifies the most specific motif that matches a certain
+number of sequences. Where the line is horizontal, there is a motif that covers
+<i>k</i> sequences that is more specific than any motif that covers only
+<i>k&nbsp-&nbsp1</i> sequences.
+
+You are unlikely to be interested in motifs that are not close to this line,
+because there will always be a motif on the line which is more specific and
+still covers the same number of sequences (or is as specific and covers more
+sequences).<p>
+
+The gray bands (if you chose the score contours option) represents the quality
+of a motif according to our measure which trades off specificity and
+coverage. Dots that occur in a darker band are better. The discrete bands are
+artifacts introduced because it's hard to perceive the changes in the actual
+continuous function. So imagine a infinite number of gradations between each of
+the hard edges.<p>
+
+END
+
+}
+
+sub from_blocks {
+    my($s) = @_;
+
+    $* = 1;
+
+    $s =~ s/ID   .*//;
+    $s =~ s/AC   .*//;
+    $s =~ s/DE   .*//;
+    $s =~ s/BL   .*//;
+
+    $s =~ s/\n\n/\n/g;
+
+    $s =~ s/^.+ ([A-Z]+) .+$/$1/g;
+
+    return $s;
+}
+
+#sub get_block {
+#    
+#    $block = $in{'sequences'};
+#
+#    ($block) = $block =~ /^block: (.+)/ if ($block =~ /^block:/);
+#
+#    print <<END;
+#HTTP/1.0 302 Redirect
+#Location: /$cgireldir/$cgisubdir/nph-make-page?block=$block
+#
+#END
+#
+#    exit(0);
+#}
+
+
+
+sub one_error {
+    local($p) = @_;
+
+    local($p2, $p3, $p4, $x, $g, %short, %long, $new, $s);
+
+    $p =~ tr/a-z/A-Z/;
+
+    $p2 = $p;
+
+    $x = 0;
+
+    foreach $g ($p =~ /(\[[A-Z]+\])/g) {
+	if (!defined($short{$g})) {
+	    $short{$g} = chr(ord('a') + $x);
+	    $long{chr(ord('a') + $x)} = $g;
+	    $new = $short{$g};
+	    $g =~ s/\[/\\\[/;
+	    $g =~ s/\]/\\\]/;
+	    $p2 =~ s/$g/$new/g;
+	    $x ++;
+#	print "$p2\n";
+	}
+    }
+    
+    $p3 = "";
+    
+    foreach $i (0..length($p2) - 1) {
+	next if (substr($p2, $i, 1) eq '.');
+	
+	$p4 = $p2;
+	substr($p4, $i, 1) = '.';
+	$p3 .= "$p4|";
+    }
+    
+    chop $p3;
+    
+#print "$p3\n";
+    
+    foreach $s (keys(%long)) {
+	$p3 =~ s/$s/$long{$s}/g;
+    }
+    
+    return $p3;
+}
+
+
+
+sub bars {
+    &write_sequences();
+
+   `cd /tmp
+    $bindir/columns-graph.pl < /tmp/$$ > /tmp/$$.ps
+    @PSTOPNM@ -llx 0 -lly 0 -xsize 1500 -ysize 2000 /tmp/$$.ps
+    @PNMSCALE@ 0.5 < /tmp/$$001.ppm | @PNMCROP@ > /tmp/$$.ppm
+    @PPMQUANT@ 256 < /tmp/$$.ppm | @PPMTOGIF@ > $htmldir/$htmlsubdir/motifs/$$-bars.gif
+    mv /tmp/$$.ps $htmldir/$htmlsubdir/motifs/
+   `;
+
+    ($x, $y) = `@PNMFILE@ /tmp/$$.ppm` =~ /, (\d+) by (\d+)/;
+    `/bin/rm /tmp/$$*.ppm /tmp/$$.ps`;
+
+    print "
+<a href=\"/$htmlsubdir/motifs/$$.ps\"><img src=\"/$htmlsubdir/motifs/$$-bars.gif\" width=$x height=$y border=0></a><p>
+(<i>Click on the graphic to get an encapsulated PostScript file for printing</i>)<p>
+";
+#    `echo visualize $ENV{'REMOTE_HOST'} | mail cnevill`;
+}
+

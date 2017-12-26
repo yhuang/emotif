@@ -1,0 +1,155 @@
+#! @PERL@
+
+
+#
+# File:  columns-graph.pl
+# Date:  @DATE@
+# Package:  @SOFTWARE@-@VERSION@
+# Programmers:  Craig G. Nevill-Manning (@CONTACT_CRAIG@)
+#               Thomas D. Wu (@CONTACT_TOM@)
+#               Jimmy Y. Huang (@CONTACT_JIMMY@)
+# ------------------------------------------------------------
+#
+# ------------------------------------------------------------
+# @COPYRIGHT@
+# All Rights Reserved.
+# The Leland Stanford Junior University Board of Trustees
+#
+
+
+$prefix = "@prefix@";
+$exec_prefix = "@exec_prefix@";
+$bindir = "@bindir@";
+
+while (<>) {
+    chop($line = $_);
+    foreach $i (0..length($line) - 1) {
+	$c[$i][ord(substr($line, $i, 1)) - ord('A')] ++;
+    }
+
+    $lines ++;
+}
+
+$x = 0;
+$dx = 10;
+$gapx = 3;
+
+$xscale  = 450 / length($line) / ($dx + $gapx);
+$yscale = 400 / $lines;
+
+$dx *= $xscale;
+$gapx *= $xscale;
+
+print "%!PS-Adobe-2.0 EPSF-2.0
+%%BoundingBox: 0 0 600 450
+
+/Helvetica findfont ", 9, " scalefont setfont
+20 30 translate
+0 setlinewidth
+
+";
+
+$colors = {
+    'D' => [230,  10,  10],
+    'E' => [230,  10,  10],
+    'K' => [ 20,  90, 255],
+    'R' => [ 20,  90, 255],
+    'F' => [ 50,  50, 170],
+    'Y' => [ 50,  50, 170],
+    'G' => [235, 235, 235],
+    'A' => [200, 200, 200],
+    'H' => [130, 130, 210],
+    'C' => [230, 230,   0],
+    'M' => [230, 230,   0],
+    'S' => [250, 150,   0],
+    'T' => [250, 150,   0],
+    'N' => [  0, 220, 220],
+    'Q' => [  0, 220, 220],
+    'L' => [ 15, 130,  15],
+    'V' => [ 15, 130,  15],
+    'I' => [ 15, 130,  15],
+    'W' => [180,  90, 180],
+    'P' => [220, 150, 130]
+    };
+
+$names = {
+    'D' => "Aspartic acid",
+    'E' => "Glutamic acid",
+    'K' => "Lysine",
+    'R' => "Arginine",
+    'F' => "Phenylalanine",
+    'Y' => "Tyrosine",
+    'G' => "Glycine",
+    'A' => "Alanine",
+    'H' => "Histidine",
+    'C' => "Cysteine",
+    'M' => "Methionine",
+    'S' => "Serine",
+    'T' => "Threonine",
+    'N' => "Asparagine",
+    'Q' => "Glutamine",
+    'L' => "Leucine",
+    'V' => "Valine",
+    'I' => "Isoleucine",
+    'W' => "Tryptophan",
+    'P' => "Proline"
+    };
+
+foreach $i (0..length($line) - 1) {
+    $column = $c[$i];
+
+    undef @freqs;
+
+    foreach $j (0..$#{$column}) {
+	next if (!defined($$column[$j]));
+	push @freqs, ($$column[$j] + 10000 . "\t$j");
+    }
+
+    $y = 0;
+
+    print $x + $dx / 2 - 1, " -15 moveto ($i) show\n";
+
+    foreach (reverse(sort(@freqs))) {
+	($freq, $an) = split(/\t/, $_);
+	$freq -= 10000;
+	$freq *= $yscale;
+	$aa = chr($an + ord('A'));
+
+	print $$colors{$aa}[0] / 255, " ",
+	$$colors{$aa}[1] / 255, " ",
+	$$colors{$aa}[2] / 255, " setrgbcolor\n";
+
+	print "$x $y moveto $dx 0 rlineto 0 $freq rlineto -$dx 0 rlineto closepath gsave fill\n";
+
+	print " grestore 0 0 0 setrgbcolor stroke\n";
+
+	if ($freq > 10) {
+	    print $x + $dx / 2, " ", $y + $freq / 2, " moveto ",
+	    "-3 -4.5 rmoveto ",
+	    " ($aa) show\n";
+	}
+	$y += $freq;
+    }
+    $x += $dx + $gapx;
+}
+
+$y = 0;
+
+$x += 20;
+
+foreach $aa (reverse(sort(keys(%$colors)))) {
+    print $$colors{$aa}[0] / 255, " ",
+    $$colors{$aa}[1] / 255, " ",
+    $$colors{$aa}[2] / 255, " setrgbcolor\n";
+    
+    print "$x $y moveto 0 10 rlineto 10 0 rlineto closepath gsave fill";
+    print " grestore 0 0 0 setrgbcolor stroke\n";
+    print $x + 15, " ", $y + 2, " moveto ($aa) show\n";
+    print $x + 25, " ", $y + 2, " moveto ($$names{$aa}) show\n";
+    $y += 20;
+}
+
+print "$x $y moveto (key:) show\n";
+
+print "showpage\n";
+

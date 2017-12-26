@@ -1,0 +1,107 @@
+#! @PERL@
+
+
+#
+# File:  nph-make-page
+# Date:  @DATE@
+# Package:  @SOFTWARE@-@VERSION@
+# Programmers:  Jimmy Y. Huang (@CONTACT_JIMMY@)
+#               Thomas D. Wu (@CONTACT_TOM@)
+#               Craig G. Nevill-Manning (@CONTACT_CRAIG@)
+# ------------------------------------------------------------
+#
+# ------------------------------------------------------------
+# @COPYRIGHT@
+# All Rights Reserved.
+# The Leland Stanford Junior University Board of Trustees
+#
+
+
+$htmldir = "@HTMLDIR@";
+$htmlsubdir = "@HTMLSUBDIR@";
+
+#$| = 1;
+require "./cgi-lib.pl";
+&ReadParse();
+
+print <<end;
+http/1.0 200 ok
+server: cern/3.0
+content-type: text/html
+
+end
+
+
+&Main;
+
+sub Main {
+    #-----------------#
+    # Local Variables #
+    #-----------------#
+    my $form = "$htmldir/$htmlsubdir/".$in{'form'};
+    my $tag = $in{'tag'};
+    my $file = $in{'example'};
+    my $sequences = $in{'sequences'};
+    my $sequence = $in{'sequence'};
+    my $regularExpression = "";
+    my $example = "";
+    my $flag = 0, my $regularExpressionLength = 0;
+    my $formLine = "", my $inputLine = "";
+    local (*FORM), local (*INPUT);
+
+    if ($file =~ m|tmp|) {
+        $example = $file;
+    } else {
+        $example = "$htmldir/$htmlsubdir/".$file;
+    }
+
+    open (FORM, $form);
+
+    while ($formLine = <FORM>) {
+        if ($formLine =~ m|$tag| && $flag == 0) {
+	    $flag = 1;
+
+	    if ($tag eq "text" || $tag eq "TEXT") {
+	        open (INPUT, $example);
+
+	        while ($inputLine = <INPUT>) {
+		    $regularExpression .= $inputLine;
+	        }
+
+	        close (INPUT);
+
+		$regularExpressionLength = length ($regularExpression);
+		print "<input type=text name=motif size=$regularExpressionLength value=\"$regularExpression\">";
+	        next;
+            }
+
+            print $formLine;
+
+            if ($file eq "") {
+		$sequences =~ s|<br>|\n|g;
+
+		if ($sequences ne "" && $sequence eq "") {
+	            print $sequences;
+                } elsif ($sequences eq "" && $sequence ne "") {
+		    print $sequence;
+                } else {
+                }
+	    } else {
+	        open (INPUT, $example);
+
+	        while ($inputLine = <INPUT>) {
+		    print $inputLine;
+	        }
+
+	        close (INPUT);
+            }
+
+	    next;
+        }
+
+	print $formLine;
+    }
+
+    close (FORM);
+}
+

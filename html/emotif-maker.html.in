@@ -1,0 +1,84 @@
+<html>
+
+<HEAD>
+<TITLE>eMOTIF-MAKER (Alignment-to-eMOTIF Converter)</TITLE>
+</HEAD>
+
+<body bgcolor=#FFFFFF link=#26246b alink=#8777bab vlink=#8777bab>
+
+<map name=menu>
+<area coords=0,12,151,30 href="/@HTMLSUBDIR@/emotif-maker.html" target=_top>
+<area coords=0,34,151,52 href="/@HTMLSUBDIR@/emotif-scan.html" target=_top>
+<area coords=0,56,151,73 href="/@HTMLSUBDIR@/emotif-search.html" target=_top>
+</map>
+<img src="/@HTMLSUBDIR@/menu.gif" usemap=#menu align=right border=0>
+
+<img src="/@HTMLSUBDIR@/emotif-maker.gif" border=0>
+
+<p>
+<a href="@CONTACT_JIMMY_HTML@">Jimmy Y. Huang</a>, 
+<a href="@CONTACT_TOM_HTML@">Thomas D. Wu</a>, 
+<a href="@CONTACT_CRAIG_HTML@">Craig G. Nevill-Manning</a>, and 
+<a href="@CONTACT_DOUG_HTML@">Douglas L. Brutlag</a>
+
+<p>
+<form method=post action=/@CGIRELDIR@/@CGISUBDIR@/nph-emotif-maker>
+
+Enter aligned sequences:<br>
+
+<TEXTAREA name=sequences cols=70 rows=10>
+</TEXTAREA>
+
+<P>
+<input type=image src="/@HTMLSUBDIR@/make-emotifs.gif" border=0>
+
+<a href="/@HTMLSUBDIR@/emotif-maker.html"><img src="/@HTMLSUBDIR@/clear-alignment.gif" border=0></a>
+
+<a href="/@CGIRELDIR@/@CGISUBDIR@/nph-make-page?form=emotif-maker.html&tag=TEXTAREA&example=arac-example.txt"><img src="/@HTMLSUBDIR@/arac-example.gif" border=0></a>
+
+<a href="/@CGIRELDIR@/@CGISUBDIR@/nph-make-page?form=emotif-maker.html&tag=TEXTAREA&example=tubulin-example.txt"><img src="/@HTMLSUBDIR@/tubulin-example.gif" border=0></a>
+
+<P>
+<HR>
+<P>
+
+The <font=courier><I>e</I>M<font size=-1>OTIFS</font> must match <input type=text name=minimum size=3 value=30>% of the sequences in the multiple sequence alignment.
+<input type=checkbox name=contours checked> Draw score contours<br>
+
+Calculate specificity relative to distribution of
+<input type=radio name=distribution value=swiss-prot checked>
+<font size=-1>SWISS-PROT</font>
+<input type=radio name=distribution value=local>
+sequences supplied.
+<br><br>
+Substitution groups <select name=groups>
+<option>default
+<option>HSSP+beta
+<option value=user>User specified...
+</select>
+<br><br>
+<table><tr><td valign=top>
+User specified groups<br>
+<TEXTAREA name=usergroups cols=15 rows=10>
+</TEXTAREA>
+</td>
+</table>
+
+<b>Caution:</b>  The number of groups entered should not be too many, and the size of each group should remain small; otherwise, the number of the <font=courier><I>e</I>M<font size=-1>OTIFS</font> generated will greatly increase, leading to a much longer wait.  The recommended number of substition groups is about 20 (The maximum number of substitution groups allowed is 40.), and each group should have no more than 7 amino acids.
+</form>
+
+
+<HR>
+
+<P>
+<table>
+<td><a href="/@HTMLSUBDIR@/database-paper.pdf"><img src="/@HTMLSUBDIR@/pdf.gif" border=0></a></td>
+<td><img src="/@HTMLSUBDIR@/reference-1.gif"></td>
+</table>
+<table>
+<td><a href="/@HTMLSUBDIR@/emotif-paper.pdf"><img src="/@HTMLSUBDIR@/pdf.gif" border=0></a></td>
+<td><img src="/@HTMLSUBDIR@/reference-2.gif"></td>
+</table>
+
+</body>
+</html>

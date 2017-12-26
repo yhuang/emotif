@@ -1,0 +1,130 @@
+#! @PERL@
+
+
+#
+# File:  nph-reformat
+# Date:  @DATE@
+# Package:  @SOFTWARE@-@VERSION@
+# Programmers:  Jimmy Y. Huang (@CONTACT_JIMMY@)
+#               Thomas D. Wu (@CONTACT_TOM@)
+#               Craig G. Nevill-Manning (@CONTACT_CRAIG@)
+# ------------------------------------------------------------
+#
+# ------------------------------------------------------------
+# @COPYRIGHT@
+# All Rights Reserved.
+# The Leland Stanford Junior University Board of Trustees
+#
+
+
+$prefix = "@prefix@";
+$exec_prefix = "@exec_prefix@";
+$bindir = "@bindir@";
+$htmldir = "@HTMLDIR@";
+$htmlsubdir = "@HTMLSUBDIR@";
+$cgireldir = "@CGIRELDIR@";
+$cgisubdir = "@CGISUBDIR@";
+$datadir = "@DATADIR_EMOTIF@";
+
+require "./cgi-lib.pl";
+&ReadParse();
+
+print <<END;
+HTTP/1.0 200 OK
+Server: CERN/3.0
+Content-type: text/html
+
+END
+
+print `cat $htmldir/$htmlsubdir/header.html`;
+
+$s = $in{"sequences"};
+$f = $in{"format"};
+$t = $in{"minimum_width"};
+
+$s =~ s/\r//g;
+
+print "Here are the ungapped alignments at least <b>$t</b> wide from your longer alignment<p>\n";
+
+split_sequences() if ($f eq "split");
+not_split_sequences() if ($f eq "not-split");
+
+find_ungapped_regions(@s);
+
+print `cat $htmldir/$htmlsubdir/footer.html`;
+
+exit(0);
+
+##############################################################################
+
+sub split_sequences {
+    $* = 1;
+
+    print "<pre>";
+    $s =~ s/^.*CLUSTAL.*$//i;    # remove CLUSTAL line
+    $s =~ s#^[^\000]+//##;       # remove up to //
+    $s =~ s/^..[^ ]+ //g;         # remove IDs at beginning of line
+    $s =~ s/^[ 0-9]+$//g;        # position numbers    
+    $s =~ s/^[ .*]+$//g;         # Clustal column identity
+    $s =~ s/\./-/g;              # MSF gaps
+    $s =~ s/ //g;                # remove spaces
+    $s =~ s/\n\n\n/\n\n/g;       # reduce two-line gaps
+    $s =~ s/^\n+//;              # remove new lines at start
+
+
+    foreach $block (split(/\n\n/, $s)) {
+	$i = 0; 
+	foreach $line (split(/\n/, $block)) {
+#	    print "$i $line\n";
+	    $s[$i ++] .= $line;
+	}
+    }
+
+    print "</pre>\n";
+}
+
+sub not_split_sequences {
+    $i = 0;
+    print "<pre>";
+    foreach $x ($s =~ /[-A-Za-z\n]{40,}/g) {
+	$x =~ s/\n//g;
+	$s[$i ++] = $x;
+    }
+    print "</pre>";
+}
+
+sub find_ungapped_regions {
+    
+    my(@s) = @_;
+    
+    $j = 0;
+    
+    for $i (0..length($s[0]) - 1) {
+	@so_far = @new;
+	for $k (0..$#s) {
+	    if (substr($s[$k], $i, 1) eq '-') {
+		output_form(@so_far) if ($j > $t);
+		undef @so_far;
+		undef @new;
+		$j = 0;
+		last;
+	    }
+	    $new[$k] .= substr($s[$k], $i, 1);
+	}
+	$j ++;
+    }
+    output_form(@new) if ($j > $t);
+}
+
+sub output_form {
+    $form = `cat /$htmldir/$htmlsubdir/form.html`;
+    $x = join("\n", @_) . "\n";
+    $form =~ s#</textarea>#$x</textarea>#;
+    $form =~ s/cols=\d+/cols=$j/;
+    $rows = $#_ + 1;
+    $form =~ s/rows=\d+/rows=$rows/;
+    print $form;
+}
+
+
+

@@ -1,0 +1,65 @@
+<HTML>
+
+<HEAD>
+<TITLE>eMOTIF-SEARCH (Protein Classification)</TITLE>
+</HEAD>
+
+<body bgcolor=#FFFFFF link=#26246b alink=#8777bab vlink=#8777bab>
+
+<map name=menu>
+<area coords=0,12,151,30 href="/@HTMLSUBDIR@/emotif-maker.html" target=_top>
+<area coords=0,34,151,52 href="/@HTMLSUBDIR@/emotif-scan.html" target=_top>
+<area coords=0,56,151,73 href="/@HTMLSUBDIR@/emotif-search.html" target=_top>
+</map>
+<img src="/@HTMLSUBDIR@/menu.gif" usemap=#menu align=right border=0>
+
+<img src="/@HTMLSUBDIR@/emotif-search.gif" border=0>
+
+<p>
+<a href="@CONTACT_JIMMY_HTML@">Jimmy Y. Huang</a>, 
+<a href="@CONTACT_TOM_HTML@">Thomas D. Wu</a>, 
+<a href="@CONTACT_CRAIG_HTML@">Craig G. Nevill-Manning</a>, and 
+<a href="@CONTACT_DOUG_HTML@">Douglas L. Brutlag</a>
+
+<p>
+<form method=post action=/@CGIRELDIR@/@CGISUBDIR@/nph-emotif-search>
+
+Desired expectation threshold: 1e
+<input type="text" name="exp" value="-2" size="4">     
+
+<br>
+
+Alignment database:
+<input type="radio" name="database" value="all"> <font size="-1">BLOCKS</font>+</a> and <font size="-1">PRINTS</font>
+
+<input type="radio" name="database" value="non-biased" checked> non-biased <font size="-1">BLOCKS</font>+</a> and <font size="-1">PRINTS</font>
+
+<p>
+Enter sequence:<br>
+<TEXTAREA name=sequence cols=70 rows=10>
+</TEXTAREA>
+
+<p>
+<input type=image src="/@HTMLSUBDIR@/classify-protein.gif" border=0>
+
+<a href="/@CGIRELDIR@/@CGISUBDIR@/nph-make-page?form=emotif-search.html&tag=TEXTAREA&example=search-example.txt"><img src="/@HTMLSUBDIR@/example-sequence.gif" border=0></a>
+
+<a href="/@HTMLSUBDIR@/emotif-search.html"><img src="/@HTMLSUBDIR@/clear-sequence.gif" border=0></a>
+</form>
+
+<HR>
+
+<P>
+The <I>e</I><font size="-1">MOTIFS</font> are derived from the multiple sequence alignments in the <a href="http://www.blocks.fhcrc.org/"><font size="-1">BLOCKS+</font></a> database (@BLOCKS_RELEASE@) and the <a href="http://www.bioinf.man.ac.uk/dbbrowser/PRINTS/"><font size="-1">PRINTS</font></a> database (@PRINTS_RELEASE@).
+
+<table>
+<td><a href="/@HTMLSUBDIR@/database-paper.pdf"><img src="/@HTMLSUBDIR@/pdf.gif" border=0></a></td>
+<td><img src="/@HTMLSUBDIR@/reference-1.gif"></td>
+</table>
+<table>
+<td><a href="/@HTMLSUBDIR@/emotif-paper.pdf"><img src="/@HTMLSUBDIR@/pdf.gif" border=0></a></td>
+<td><img src="/@HTMLSUBDIR@/reference-2.gif"></td>
+</table>
+
+</body>
+</html>
